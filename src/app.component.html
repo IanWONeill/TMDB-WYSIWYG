@@ -1,134 +1,278 @@
+
 <!-- Context Menu -->
 @if (contextMenu().visible) {
-  <div class="fixed z-[10001] bg-slate-800 border border-slate-700 rounded-md shadow-lg text-slate-200 text-sm py-1 w-48"
+  <div class="fixed z-[10001] bg-slate-900 border border-slate-700 rounded-lg shadow-2xl text-slate-200 text-sm py-1 w-56 overflow-visible animate-[fadeIn_0.1s_ease-out]"
        [style.left.px]="contextMenu().x"
        [style.top.px]="contextMenu().y"
        (click)="$event.stopPropagation()">
-    <button (click)="duplicateElement(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-3 py-2 hover:bg-slate-700"><i class="fa-solid fa-copy fa-fw"></i> Duplicate</button>
-    <button (click)="copyStyles(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-3 py-2 hover:bg-slate-700"><i class="fa-solid fa-palette fa-fw"></i> Copy Styles</button>
-    <button (click)="pasteStyles(contextMenu().elementId!)" [disabled]="!copiedStyles()" class="w-full flex items-center gap-3 text-left px-3 py-2 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"><i class="fa-solid fa-paste fa-fw"></i> Paste Styles</button>
-    <div class="my-1 border-t border-slate-700"></div>
-    <div class="relative group">
-       <button class="w-full flex items-center justify-between text-left px-3 py-2 hover:bg-slate-700"><span class="flex items-center gap-3"><i class="fa-solid fa-object-group fa-fw"></i> Align</span><i class="fa-solid fa-chevron-right text-xs"></i></button>
-       <div class="absolute left-full top-0 mt-[-5px] w-48 bg-slate-800 border border-slate-700 rounded-md shadow-lg py-1 hidden group-hover:block">
-           <button (click)="alignElement(contextMenu().elementId!, 'fill')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Fill Canvas</button>
-           <button (click)="alignElement(contextMenu().elementId!, 'center')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Center on Canvas</button>
-           <div class="my-1 border-t border-slate-700"></div>
-           <button (click)="alignElement(contextMenu().elementId!, 'fitW')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Fit to Width</button>
-           <button (click)="alignElement(contextMenu().elementId!, 'fitH')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Fit to Height</button>
-           <div class="my-1 border-t border-slate-700"></div>
-           <button (click)="alignElement(contextMenu().elementId!, 'left')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Snap to Left</button>
-           <button (click)="alignElement(contextMenu().elementId!, 'right')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Snap to Right</button>
-           <button (click)="alignElement(contextMenu().elementId!, 'top')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Snap to Top</button>
-           <button (click)="alignElement(contextMenu().elementId!, 'bottom')" class="w-full text-left px-3 py-2 hover:bg-slate-700">Snap to Bottom</button>
+    
+    <div class="px-3 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-800 mb-1">Actions</div>
+    
+    <button (click)="duplicateElement(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors"><i class="fa-solid fa-copy w-4 text-center"></i> Duplicate</button>
+    <button (click)="copyStyles(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors"><i class="fa-solid fa-palette w-4 text-center"></i> Copy Styles</button>
+    <button (click)="pasteStyles(contextMenu().elementId!)" [disabled]="!copiedStyles()" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"><i class="fa-solid fa-paste w-4 text-center"></i> Paste Styles</button>
+    
+    <div class="my-1 border-t border-slate-800"></div>
+    
+    <!-- Align Submenu -->
+    <div class="relative group/align">
+       <button class="w-full flex items-center justify-between text-left px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors">
+         <span class="flex items-center gap-3"><i class="fa-solid fa-object-group w-4 text-center"></i> Align</span>
+         <i class="fa-solid fa-chevron-right text-[10px]"></i>
+       </button>
+       <!-- Submenu Container with overlap bridge -->
+       <div class="absolute left-full top-0 ml-[-4px] pl-1 w-48 hidden group-hover/align:block">
+           <div class="bg-slate-900 border border-slate-700 rounded-lg shadow-xl py-1">
+               <button (click)="alignElement(contextMenu().elementId!, 'center')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Center (XY)</button>
+               <button (click)="alignElement(contextMenu().elementId!, 'centerH')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Center Horizontal</button>
+               <button (click)="alignElement(contextMenu().elementId!, 'centerV')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Center Vertical</button>
+               <div class="my-1 border-t border-slate-800"></div>
+               <button (click)="alignElement(contextMenu().elementId!, 'top')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Align Top</button>
+               <button (click)="alignElement(contextMenu().elementId!, 'bottom')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Align Bottom</button>
+               <button (click)="alignElement(contextMenu().elementId!, 'left')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Align Left</button>
+               <button (click)="alignElement(contextMenu().elementId!, 'right')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Align Right</button>
+               <div class="my-1 border-t border-slate-800"></div>
+               <button (click)="alignElement(contextMenu().elementId!, 'fill')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Stretch to Canvas</button>
+               <button (click)="alignElement(contextMenu().elementId!, 'fitW')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Stretch Width</button>
+               <button (click)="alignElement(contextMenu().elementId!, 'fitH')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Stretch Height</button>
+           </div>
        </div>
     </div>
-    <button (click)="bringToFront(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-3 py-2 hover:bg-slate-700"><i class="fa-solid fa-arrow-up-from-bracket fa-fw transform rotate-45"></i> Bring to Front</button>
-    <button (click)="sendToBack(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-3 py-2 hover:bg-slate-700"><i class="fa-solid fa-arrow-down-to-bracket fa-fw transform rotate-45"></i> Send to Back</button>
-    <div class="my-1 border-t border-slate-700"></div>
-    <button (click)="deleteElement(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-3 py-2 hover:bg-red-500 text-red-400 hover:text-white"><i class="fa-solid fa-trash-can fa-fw"></i> Delete Element</button>
+
+    <!-- Image Fit Submenu -->
+    @if (isImageElement(contextMenu().elementId)) {
+        <div class="relative group/image">
+           <button class="w-full flex items-center justify-between text-left px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors">
+             <span class="flex items-center gap-3"><i class="fa-regular fa-image w-4 text-center"></i> Image Fit</span>
+             <i class="fa-solid fa-chevron-right text-[10px]"></i>
+           </button>
+           <div class="absolute left-full top-0 ml-[-4px] pl-1 w-40 hidden group-hover/image:block">
+               <div class="bg-slate-900 border border-slate-700 rounded-lg shadow-xl py-1">
+                   <button (click)="setImageFit(contextMenu().elementId!, 'cover')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Cover (Crop)</button>
+                   <button (click)="setImageFit(contextMenu().elementId!, 'contain')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Contain (Fit)</button>
+                   <button (click)="setImageFit(contextMenu().elementId!, 'fill')" class="w-full text-left px-4 py-2 hover:bg-indigo-600 hover:text-white text-xs">Fill (Stretch)</button>
+               </div>
+           </div>
+        </div>
+    }
+
+    <button (click)="bringToFront(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors"><i class="fa-solid fa-layer-group w-4 text-center"></i> Bring to Front</button>
+    <button (click)="sendToBack(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-indigo-600 hover:text-white transition-colors"><i class="fa-solid fa-layer-group w-4 text-center opacity-50"></i> Send to Back</button>
+    
+    <div class="my-1 border-t border-slate-800"></div>
+    
+    <button (click)="deleteElement(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-red-600 hover:text-white text-red-400 transition-colors"><i class="fa-solid fa-trash-can w-4 text-center"></i> Delete</button>
   </div>
 }
 
-<div class="flex h-screen w-screen text-sm bg-slate-900 text-slate-300">
-  <!-- Left Sidebar: Tools -->
-  <aside class="w-60 md:w-64 bg-slate-800/50 border-r border-slate-700/50 p-4 flex flex-col space-y-4 overflow-y-auto shrink-0 transition-all duration-300" [class.w-16]="canvasConfig().scale < 0.6" [class.p-2]="canvasConfig().scale < 0.6">
-    <h1 class="text-xl font-bold text-white flex items-center gap-2">
-      <i class="fa-solid fa-film text-indigo-400"></i> 
-      <span [class.hidden]="canvasConfig().scale < 0.6">Editor</span>
-    </h1>
-    
-    <div [class.hidden]="canvasConfig().scale < 0.6">
-      <label for="apiKey" class="block font-medium text-slate-400 mb-1">TMDB API Key</label>
-      <input type="password" id="apiKey" [ngModel]="tmdbApiKey()" (ngModelChange)="tmdbApiKey.set($event)" class="w-full bg-slate-900/50 border-slate-700 rounded-md p-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-white placeholder-slate-500">
+<div class="flex h-screen w-screen overflow-hidden text-sm font-sans selection:bg-indigo-500 selection:text-white">
+  
+  <!-- LEFT SIDEBAR -->
+  <aside class="w-72 bg-slate-950 border-r border-slate-800 flex flex-col shrink-0 z-20 shadow-xl">
+    <!-- App Brand -->
+    <div class="h-14 flex items-center px-4 border-b border-slate-800 bg-slate-950 shrink-0">
+      <div class="flex items-center gap-3 text-indigo-400">
+        <div class="w-8 h-8 rounded bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+            <i class="fa-solid fa-clapperboard text-lg"></i>
+        </div>
+        <span class="font-bold text-white text-lg tracking-tight">TMDB <span class="text-indigo-500">EDITOR</span></span>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-group border-b border-slate-800">
+        <button (click)="activeLeftPanelTab.set('elements')" class="tab" [class.active]="activeLeftPanelTab() === 'elements'">
+            <i class="fa-solid fa-shapes"></i> Elements
+        </button>
+        <button (click)="activeLeftPanelTab.set('settings')" class="tab" [class.active]="activeLeftPanelTab() === 'settings'">
+            <i class="fa-solid fa-gear"></i> Settings
+        </button>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 overflow-y-auto p-4 custom-scrollbar">
+      @if(activeLeftPanelTab() === 'settings') {
+        <div class="space-y-6">
+            <div class="p-3 rounded-lg bg-indigo-900/10 border border-indigo-500/20">
+                <h2 class="text-indigo-400 font-semibold mb-2 flex items-center gap-2"><i class="fa-solid fa-key"></i> API Configuration</h2>
+                <p class="text-xs text-slate-400 mb-3 leading-relaxed">Enter your TMDB API Key to access live movie data.</p>
+                <div class="input-group">
+                    <label for="apiKey" class="label">TMDB API Key</label>
+                    <input type="password" id="apiKey" [ngModel]="tmdbApiKey()" (ngModelChange)="tmdbApiKey.set($event)" class="input" placeholder="Enter v3 auth key...">
+                </div>
+            </div>
+
+            <div>
+              <div class="label">Localization</div>
+              <div class="input-group">
+                <label class="text-xs text-slate-500 mb-1 block">Watch Region</label>
+                <select id="watchRegion" [ngModel]="watchRegion()" (ngModelChange)="watchRegion.set($event)" class="select">
+                    @for (country of countries; track country.iso_3166_1) { <option [value]="country.iso_3166_1">{{ country.english_name }}</option> }
+                </select>
+              </div>
+              <div class="input-group">
+                <label class="text-xs text-slate-500 mb-1 block">Language</label>
+                <select id="language" [ngModel]="language()" (ngModelChange)="language.set($event)" class="select">
+                    @for (lang of languages; track lang.iso_639_1) { <option [value]="lang.iso_639_1">{{ lang.english_name }}</option> }
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between p-3 rounded bg-slate-900 border border-slate-800">
+                <span class="text-slate-300">Include Adult Content</span>
+                <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                    <input type="checkbox" [ngModel]="includeAdult()" (ngModelChange)="includeAdult.set($event)" id="toggle-adult" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer transition-transform duration-200 ease-in-out" [class.translate-x-5]="includeAdult()" [class.border-indigo-500]="includeAdult()" [class.border-slate-400]="!includeAdult()"/>
+                    <label for="toggle-adult" class="toggle-label block overflow-hidden h-5 rounded-full cursor-pointer" [class.bg-indigo-500]="includeAdult()" [class.bg-slate-700]="!includeAdult()"></label>
+                </div>
+            </div>
+        </div>
+      }
+      
+      @if(activeLeftPanelTab() === 'elements') {
+        <div class="space-y-6">
+            <!-- Static Elements -->
+            <div>
+              <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">Static Basics</div>
+              <div class="card-grid">
+                <button (click)="addElement('text')" class="card-btn">
+                    <i class="fa-solid fa-font text-pink-400"></i> <span>Text</span>
+                </button>
+                <button (click)="addElement('image')" class="card-btn">
+                    <i class="fa-regular fa-image text-emerald-400"></i> <span>Image</span>
+                </button>
+                <button (click)="addElement('shape')" class="card-btn">
+                    <i class="fa-solid fa-square text-amber-400"></i> <span>Shape</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Dynamic Content -->
+            <div>
+                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">Dynamic Content</div>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button (click)="addElement('tmdb-poster')" class="card-btn flex-row justify-start px-3">
+                        <i class="fa-solid fa-ticket text-blue-400 w-5"></i> <span>Poster</span>
+                    </button>
+                    <button (click)="addElement('tmdb-backdrop')" class="card-btn flex-row justify-start px-3">
+                        <i class="fa-solid fa-image text-blue-400 w-5"></i> <span>Backdrop</span>
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <button (click)="addElement('tmdb-title')" class="card-btn"><i class="fa-solid fa-heading text-slate-400"></i><span>Title</span></button>
+                    <button (click)="addElement('tmdb-overview')" class="card-btn"><i class="fa-solid fa-align-left text-slate-400"></i><span>Plot</span></button>
+                    <button (click)="addElement('tmdb-rating')" class="card-btn"><i class="fa-solid fa-star text-yellow-400"></i><span>Rating</span></button>
+                    <button (click)="addElement('tmdb-genres')" class="card-btn"><i class="fa-solid fa-tags text-slate-400"></i><span>Tags</span></button>
+                    <button (click)="addElement('tmdb-logo')" class="card-btn"><i class="fa-brands fa-imdb text-slate-400"></i><span>Logo</span></button>
+                    <button (click)="addElement('tmdb-cast')" class="card-btn"><i class="fa-solid fa-user-group text-slate-400"></i><span>Cast</span></button>
+                </div>
+            </div>
+            
+            <!-- Metadata -->
+            <div>
+                 <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">Metadata</div>
+                 <div class="grid grid-cols-3 gap-2">
+                    <button (click)="addElement('tmdb-release-date')" class="card-btn"><i class="fa-regular fa-calendar text-slate-500"></i><span>Date</span></button>
+                    <button (click)="addElement('tmdb-runtime')" class="card-btn"><i class="fa-regular fa-clock text-slate-500"></i><span>Time</span></button>
+                    <button (click)="addElement('tmdb-tagline')" class="card-btn"><i class="fa-solid fa-quote-left text-slate-500"></i><span>Quote</span></button>
+                    <button (click)="addElement('tmdb-network-logo', 'tv')" class="card-btn"><i class="fa-solid fa-tv text-slate-500"></i><span>Net.</span></button>
+                    <button (click)="addElement('tmdb-season-episode-count', 'tv')" class="card-btn"><i class="fa-solid fa-list-ol text-slate-500"></i><span>S/E</span></button>
+                 </div>
+            </div>
+
+            <!-- Collections -->
+            <div>
+              <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-1">Collections</div>
+              <div class="space-y-2">
+                <button (click)="addElement('tmdb-poster-scroll', undefined, 'movie')" class="btn btn-secondary w-full justify-start"><i class="fa-solid fa-film text-indigo-400"></i> Movie Poster Scroll</button>
+                <button (click)="addElement('tmdb-poster-scroll', undefined, 'tv')" class="btn btn-secondary w-full justify-start"><i class="fa-solid fa-tv text-indigo-400"></i> TV Poster Scroll</button>
+                <button (click)="addElement('tmdb-backdrop-slideshow', undefined, 'movie')" class="btn btn-secondary w-full justify-start"><i class="fa-solid fa-images text-purple-400"></i> Movie Slideshow</button>
+                <button (click)="addElement('tmdb-backdrop-slideshow', undefined, 'tv')" class="btn btn-secondary w-full justify-start"><i class="fa-solid fa-compact-disc text-purple-400"></i> TV Slideshow</button>
+              </div>
+            </div>
+        </div>
+      }
     </div>
     
-    <details class="space-y-2" open>
-      <summary class="font-semibold text-lg text-white list-none cursor-pointer">
-        <span [class.hidden]="canvasConfig().scale < 0.6">Static</span>
-      </summary>
-      <div class="grid grid-cols-2 gap-2" [class.grid-cols-1]="canvasConfig().scale < 0.6">
-        <button (click)="addElement('text')" class="bg-slate-700/50 hover:bg-slate-700 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-font text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Text</span></button>
-        <button (click)="addElement('image')" class="bg-slate-700/50 hover:bg-slate-700 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-image text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Image</span></button>
-        <button (click)="addElement('shape')" class="bg-slate-700/50 hover:bg-slate-700 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-shapes text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Shape</span></button>
-      </div>
-    </details>
-
-    <details class="space-y-2" open>
-      <summary class="font-semibold text-lg text-white list-none cursor-pointer">
-        <span [class.hidden]="canvasConfig().scale < 0.6">TMDB Item</span>
-      </summary>
-      <div class="grid grid-cols-2 gap-2" [class.grid-cols-1]="canvasConfig().scale < 0.6">
-        <button (click)="addElement('tmdb-poster')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-ticket text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Poster</span></button>
-        <button (click)="addElement('tmdb-backdrop')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-image text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Backdrop</span></button>
-        <button (click)="addElement('tmdb-logo')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-registered text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Logo</span></button>
-        <button (click)="addElement('tmdb-title')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-heading text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Title</span></button>
-        <button (click)="addElement('tmdb-overview')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-paragraph text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Overview</span></button>
-        <button (click)="addElement('tmdb-tagline')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-quote-left text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Tagline</span></button>
-        <button (click)="addElement('tmdb-release-date')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-calendar text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Date</span></button>
-        <button (click)="addElement('tmdb-runtime')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-clock text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Runtime</span></button>
-        <button (click)="addElement('tmdb-genres')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-tags text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Genres</span></button>
-        <button (click)="addElement('tmdb-rating')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors"><i class="fa-solid fa-star text-xl mb-1"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Rating</span></button>
-        <button (click)="addElement('tmdb-cast')" class="bg-indigo-600/50 hover:bg-indigo-600 p-2 rounded-md flex flex-col items-center transition-colors col-span-2"><i class="fa-solid fa-users text-xl"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Cast Scroll</span></button>
-      </div>
-    </details>
-    
-    <details class="space-y-2" open>
-      <summary class="font-semibold text-lg text-white list-none cursor-pointer">
-        <span [class.hidden]="canvasConfig().scale < 0.6">TMDB Collections</span>
-      </summary>
-      <div class="grid grid-cols-1 gap-2">
-        <button (click)="addElement('tmdb-poster-scroll')" class="bg-purple-600/50 hover:bg-purple-600 p-2 rounded-md flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-grip-vertical text-xl"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Poster Scroll</span></button>
-        <button (click)="addElement('tmdb-backdrop-slideshow')" class="bg-purple-600/50 hover:bg-purple-600 p-2 rounded-md flex items-center justify-center gap-2 transition-colors"><i class="fa-solid fa-images text-xl"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Backdrop Slideshow</span></button>
-      </div>
-    </details>
+    <div class="p-3 border-t border-slate-800 text-center text-xs text-slate-600">
+        TMDB Editor &copy; 2025
+    </div>
   </aside>
 
-  <!-- Center: Canvas Area -->
-  <main class="flex-1 flex flex-col bg-slate-900 overflow-auto">
-    <!-- Top Bar -->
-    <div class="flex items-center justify-between p-4 border-b border-slate-700/50 shrink-0">
-      <div class="flex items-center space-x-2">
-        <select [ngModel]="selectedPreset()" (ngModelChange)="selectedPreset.set($event)" class="bg-slate-700 border-slate-600 rounded-md p-2 focus:ring-2 focus:ring-indigo-500">
-          <option value="mobile">Mobile (375x667)</option>
-          <option value="tablet">Tablet (768x1024)</option>
-          <option value="tv">TV (1920x1080)</option>
-        </select>
-        <button (click)="undo()" [disabled]="historyIndex() <= 0" class="px-3 py-2 bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><i class="fa-solid fa-undo"></i></button>
-        <button (click)="redo()" [disabled]="historyIndex() >= history().length - 1" class="px-3 py-2 bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"><i class="fa-solid fa-redo"></i></button>
+  <!-- CENTER: CANVAS AREA -->
+  <div class="flex-1 flex flex-col bg-slate-900 relative z-10">
+    
+    <!-- Canvas Toolbar -->
+    <div class="h-14 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950 shrink-0 shadow-sm">
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800">
+            <button (click)="selectedPreset.set('mobile')" class="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" [class.bg-slate-800]="selectedPreset() === 'mobile'" [class.text-white]="selectedPreset() === 'mobile'" title="Mobile"><i class="fa-solid fa-mobile-screen"></i></button>
+            <button (click)="selectedPreset.set('tablet')" class="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" [class.bg-slate-800]="selectedPreset() === 'tablet'" [class.text-white]="selectedPreset() === 'tablet'" title="Tablet"><i class="fa-solid fa-tablet-screen-button"></i></button>
+            <button (click)="selectedPreset.set('tv')" class="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" [class.bg-slate-800]="selectedPreset() === 'tv'" [class.text-white]="selectedPreset() === 'tv'" title="TV"><i class="fa-solid fa-tv"></i></button>
+        </div>
+        
+        <div class="h-6 w-px bg-slate-800"></div>
+
+        <div class="flex items-center gap-2 bg-slate-900 p-1 rounded-lg border border-slate-800">
+            <button (click)="orientation.set('portrait')" class="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" [class.bg-slate-800]="orientation() === 'portrait'" [class.text-white]="orientation() === 'portrait'" title="Portrait"><i class="fa-solid fa-file-image"></i></button>
+            <button (click)="orientation.set('landscape')" class="p-2 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" [class.bg-slate-800]="orientation() === 'landscape'" [class.text-white]="orientation() === 'landscape'" title="Landscape"><i class="fa-solid fa-image"></i></button>
+        </div>
+
+        <div class="h-6 w-px bg-slate-800"></div>
+        
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-magnifying-glass text-xs text-slate-500"></i>
+            <input type="range" min="0.1" max="2" step="0.05" [ngModel]="zoomLevel()" (ngModelChange)="zoomLevel.set(+$event)" class="w-24 accent-indigo-500 h-1 bg-slate-700 rounded appearance-none">
+            <span class="text-[10px] w-8 text-slate-400 font-mono">{{Math.round(zoomLevel() * 100)}}%</span>
+        </div>
+
+        <div class="text-xs text-slate-500 font-mono ml-2">
+            {{canvasConfig().width}} &times; {{canvasConfig().height}}
+        </div>
       </div>
-      <div>
-        <label for="preview-toggle" class="flex items-center cursor-pointer">
-          <span class="mr-3 text-slate-300">Preview</span>
-          <div class="relative">
-            <input type="checkbox" id="preview-toggle" class="sr-only" [ngModel]="previewMode()" (ngModelChange)="previewMode.set($event)">
-            <div class="block bg-slate-600 w-14 h-8 rounded-full"></div>
-            <div class="dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform" [class.translate-x-full]="previewMode()"></div>
-          </div>
-        </label>
+
+      <div class="flex items-center gap-3">
+        <button (click)="undo()" [disabled]="historyIndex() <= 0" class="btn btn-ghost btn-icon rounded-full" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
+        <button (click)="redo()" [disabled]="historyIndex() >= history().length - 1" class="btn btn-ghost btn-icon rounded-full" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
+        
+        <div class="h-6 w-px bg-slate-800 mx-2"></div>
+
+        <button (click)="previewMode.set(!previewMode())" class="btn" [class.btn-secondary]="!previewMode()" [class.btn-primary]="previewMode()">
+            <i class="fa-solid" [class.fa-eye-slash]="previewMode()" [class.fa-eye]="!previewMode()"></i> {{ previewMode() ? 'Exit Preview' : 'Preview' }}
+        </button>
       </div>
     </div>
     
-    <!-- Canvas -->
-    <div id="canvas-bg" class="flex-1 flex items-center justify-center p-4" (click)="deselectCanvas($event)">
+    <!-- Canvas Viewport -->
+    <div id="canvas-bg" class="flex-1 overflow-auto flex items-center justify-center p-8 canvas-pattern relative" (click)="deselectCanvas($event)">
+      
       <div 
         id="canvas" 
-        class="bg-slate-950/50 shadow-2xl relative overflow-hidden shrink-0" 
+        class="bg-black shadow-2xl relative overflow-hidden ring-1 ring-slate-900 transition-all duration-300 ease-out" 
         [style.width.px]="canvasConfig().width" [style.height.px]="canvasConfig().height"
         [style.transform]="'scale(' + canvasConfig().scale + ')'"
-        style="transform-origin: center center; transition: width 0.3s, height 0.3s;">
+        style="transform-origin: center center;">
+        
+        @if(!previewMode() && elements().length === 0) {
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-700 pointer-events-none">
+                <i class="fa-regular fa-square-plus text-6xl mb-4 opacity-20"></i>
+                <p class="text-lg font-medium opacity-40">Add an element to start designing</p>
+            </div>
+        }
 
         @for (element of elements(); track element.id) {
           @if (element.visible) {
             <div
               [id]="element.id"
-              class="draggable-element"
+              class="draggable-element group"
               [class.ring-2]="selectedElementId() === element.id && !previewMode()"
               [class.ring-indigo-500]="selectedElementId() === element.id && !previewMode()"
+              [class.ring-offset-2]="selectedElementId() === element.id && !previewMode()"
+              [class.ring-offset-black]="selectedElementId() === element.id && !previewMode()"
               [style.position]="'absolute'" [style.top.px]="element.y" [style.left.px]="element.x"
               [style.width.px]="element.width" [style.height.px]="element.height"
               [style.zIndex]="element.zIndex"
-              [style.backgroundColor]="!element.styles.backgroundGradient ? element.styles.backgroundColor : null"
+              [style.transform]="'rotate(' + element.rotation + 'deg)'"
+              [style.backgroundColor]="!element.styles.backgroundGradient ? hexToRgba(element.styles.backgroundColor, element.styles.backgroundOpacity ?? 1) : null"
               [style.backgroundImage]="element.styles.backgroundGradient ? 'linear-gradient(' + element.styles.backgroundGradient.angle + 'deg, ' + element.styles.backgroundGradient.from + ', ' + element.styles.backgroundGradient.to + ')' : null"
               [style.color]="element.styles.color" [style.fontFamily]="element.styles.fontFamily"
               [style.fontSize.px]="element.styles.fontSize" [style.fontWeight]="element.styles.fontWeight"
@@ -139,216 +283,365 @@
               [style.textShadow]="element.styles.textShadow ? `${element.styles.textShadow.x}px ${element.styles.textShadow.y}px ${element.styles.textShadow.blur}px ${element.styles.textShadow.color}` : null"
               [style.backdropFilter]="(element.styles.filterBlur > 0 || element.styles.filterGrayscale > 0) ? 'blur(' + element.styles.filterBlur + 'px) grayscale(' + element.styles.filterGrayscale + ')' : null"
               [style.webkitBackdropFilter]="(element.styles.filterBlur > 0 || element.styles.filterGrayscale > 0) ? 'blur(' + element.styles.filterBlur + 'px) grayscale(' + element.styles.filterGrayscale + ')' : null"
-              style="box-sizing: border-box; touch-action: none;"
-              (mousedown)="selectElement(element.id, $event)"
+              style="box-sizing: border-box; touch-action: none; display: flex; align-items: center; justify-content: center;"
+              (mousedown)="selectElement(element.id)"
               (contextmenu)="openContextMenu($event, element.id)">
               
-              @switch (element.type) {
-                @case ('text') { <div class="p-2 w-full h-full pointer-events-none">{{ element.content }}</div> }
-                @case ('image') { <img [src]="element.content" class="w-full h-full object-cover" [style.borderRadius.px]="element.styles.borderRadius"> }
-                @case ('tmdb-poster') { @if (element.tmdbData?.poster_path) { <img [src]="'https://image.tmdb.org/t/p/w500' + element.tmdbData.poster_path" class="w-full h-full object-cover"> } @else { <div class="w-full h-full bg-slate-700/50 flex items-center justify-center"><i class="fa-solid fa-ticket text-4xl text-slate-500"></i></div> } }
-                @case ('tmdb-backdrop') { @if (element.tmdbData?.backdrop_path) { <img [src]="'https://image.tmdb.org/t/p/w1280' + element.tmdbData.backdrop_path" class="w-full h-full object-cover"> } @else { <div class="w-full h-full bg-slate-700/50 flex items-center justify-center"><i class="fa-solid fa-film text-4xl text-slate-500"></i></div> } }
-                @case ('tmdb-logo') { @if (getBestLogo(element)) { <img [src]="getBestLogo(element)" class="w-full h-full object-contain"> } @else { <div class="w-full h-full bg-slate-700/50 flex items-center justify-center"><i class="fa-solid fa-registered text-4xl text-slate-500"></i></div> } }
-                @case ('tmdb-title') { <div class="p-2 w-full h-full pointer-events-none">{{ element.tmdbData?.title || 'Movie Title' }}</div> }
-                @case ('tmdb-overview') { <div class="p-2 text-xs overflow-y-auto h-full">{{ element.tmdbData?.overview || 'Movie overview...' }}</div> }
-                @case ('tmdb-tagline') { <div class="p-2 text-sm italic opacity-80">{{ element.tmdbData?.tagline || 'Movie Tagline' }}</div> }
-                @case ('tmdb-release-date') { <div class="p-2">{{ element.tmdbData?.release_date || 'YYYY-MM-DD' }}</div> }
-                @case ('tmdb-runtime') { <div class="p-2">{{ element.tmdbData?.runtime ? element.tmdbData.runtime + ' min' : '0 min' }}</div> }
-                @case ('tmdb-rating') { <div class="p-2 text-lg text-yellow-400"> @if(element.tmdbData?.vote_average){ @for(i of [].constructor(Math.round(element.tmdbData.vote_average/2)); track i){<span>★</span>} @for(i of [].constructor(5 - Math.round(element.tmdbData.vote_average/2)); track i){<span class="opacity-30">★</span>} } @else { <span>☆☆☆☆☆</span> } </div> }
-                @case ('tmdb-genres') { <div class="p-2 flex flex-wrap gap-2 items-center"> @if(element.tmdbData?.genres) { @for(genre of element.tmdbData.genres; track genre.id) { <span class="genre-pill">{{genre.name}}</span> } } @else { <span class="genre-pill">Genre</span> } </div> }
-                @case ('tmdb-poster-scroll') { <div class="w-full h-full flex items-center overflow-x-auto whitespace-nowrap p-2 gap-2" style="-webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;"> @if (element.tmdbData?.results) { @for(movie of element.tmdbData.results; track movie.id) { <img [src]="'https://image.tmdb.org/t/p/w500' + movie.poster_path" class="h-full w-auto inline-block rounded-md" style="scroll-snap-align: start;"> } } @else { <div class="w-full text-center text-slate-400">Select an endpoint</div> } </div> }
-                @case ('tmdb-cast') { <div class="w-full h-full flex items-start overflow-x-auto whitespace-nowrap p-2 gap-3" style="-webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory;"> @if (element.tmdbData?.credits?.cast) { @for(member of element.tmdbData.credits.cast.slice(0, 15); track member.id) { @if(member.profile_path) { <div class="text-center w-20 shrink-0"> <img [src]="'https://image.tmdb.org/t/p/w500' + member.profile_path" class="w-full h-auto rounded-md mb-1"> <p class="text-xs leading-tight whitespace-normal">{{member.name}}</p> </div> } } } @else { <div class="w-full text-center text-slate-400">Provide a Movie ID</div> } </div> }
-                @case ('tmdb-backdrop-slideshow') {
-                  @let state = slideshowState()[element.id];
-                  @if (state && state.backdrops.length > 0) {
-                     <div class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000" [class.opacity-100]="!state.fade" [class.opacity-0]="state.fade" [style.background-image]="'url(' + state.backdrops[state.idx1] + ')'"></div>
-                     <div class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000" [class.opacity-100]="state.fade" [class.opacity-0]="!state.fade" [style.background-image]="'url(' + state.backdrops[state.idx2] + ')'"></div>
-                  } @else {
-                    <div class="w-full h-full bg-slate-700/50 flex items-center justify-center"><i class="fa-solid fa-images text-4xl text-slate-500"></i></div>
+                <!-- Resize handles visible only when selected and not in preview -->
+                @if (selectedElementId() === element.id && !previewMode()) {
+                    <div class="absolute -right-1 -bottom-1 w-3 h-3 bg-white rounded-full z-50 cursor-se-resize shadow-sm"></div>
+                }
+
+                @switch (element.type) {
+                  @case ('text') { <div class="p-2 w-full h-full pointer-events-none whitespace-pre-wrap leading-normal">{{ element.content }}</div> }
+                  @case ('image') { <img [src]="element.content" class="w-full h-full pointer-events-none" [style.object-fit]="element.imageFit" [style.borderRadius.px]="element.styles.borderRadius"> }
+                  @case ('tmdb-poster') { @if (element.tmdbData?.poster_path) { <img [src]="'https://image.tmdb.org/t/p/w500' + element.tmdbData.poster_path" class="w-full h-full pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-600"><i class="fa-solid fa-ticket text-4xl"></i></div> } }
+                  @case ('tmdb-backdrop') { @if (element.tmdbData?.backdrop_path) { <img [src]="'https://image.tmdb.org/t/p/w1280' + element.tmdbData.backdrop_path" class="w-full h-full pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-600"><i class="fa-solid fa-image text-4xl"></i></div> } }
+                  @case ('tmdb-logo') { @if (getBestLogo(element)) { <img [src]="getBestLogo(element)" class="w-full h-full p-2 pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center border-2 border-dashed border-slate-700 text-slate-600"><span class="font-bold text-xl">LOGO</span></div> } }
+                  @case ('tmdb-title') { <div class="p-2 w-full h-full pointer-events-none leading-tight">{{ element.tmdbData?.title || element.tmdbData?.name || 'Movie Title' }}</div> }
+                  @case ('tmdb-overview') { <div class="p-2 text-xs overflow-hidden h-full w-full pointer-events-none">{{ element.tmdbData?.overview || 'Overview text placeholder...' }}</div> }
+                  @case ('tmdb-tagline') { <div class="p-2 text-sm italic opacity-80 w-full h-full pointer-events-none">{{ element.tmdbData?.tagline || 'Tagline goes here...' }}</div> }
+                  @case ('tmdb-release-date') { <div class="p-2 w-full h-full pointer-events-none">{{ element.tmdbData?.release_date || element.tmdbData?.first_air_date || '2024-01-01' }}</div> }
+                  @case ('tmdb-runtime') { <div class="p-2 w-full h-full pointer-events-none">{{ (element.tmdbData?.runtime ?? element.tmdbData?.episode_run_time?.[0]) ? (element.tmdbData.runtime ?? element.tmdbData.episode_run_time[0]) + ' min' : '120 min' }}</div> }
+                  @case ('tmdb-season-episode-count') { <div class="p-2 w-full h-full flex items-center justify-center pointer-events-none">{{ element.tmdbData?.number_of_seasons ? element.tmdbData.number_of_seasons + ' Seasons' : 'Seasons / Episodes' }}</div> }
+                  @case ('tmdb-network-logo') { @if (getBestNetworkLogo(element)) { <img [src]="getBestNetworkLogo(element)" class="w-full h-full p-2 pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center bg-white/10"><i class="fa-solid fa-tv text-2xl"></i></div> } }
+                  @case ('tmdb-rating') { <div class="p-2 text-lg text-yellow-400 pointer-events-none"> @if(element.tmdbData?.vote_average){ @for(i of [].constructor(Math.round(element.tmdbData.vote_average/2)); track i){<span>★</span>} @for(i of [].constructor(5 - Math.round(element.tmdbData.vote_average/2)); track i){<span class="opacity-30">★</span>} } @else { <span>★★★★☆</span> } </div> }
+                  @case ('tmdb-genres') { <div class="p-2 flex flex-wrap gap-2 items-center justify-center pointer-events-none"> @if(element.tmdbData?.genres) { @for(genre of element.tmdbData.genres; track genre.id) { <span class="genre-pill">{{genre.name}}</span> } } @else { <span class="genre-pill">Action</span><span class="genre-pill">Drama</span> } </div> }
+                  @case ('tmdb-poster-scroll') { <div class="w-full h-full flex items-center overflow-x-hidden p-2 gap-3 pointer-events-none"> @if (element.tmdbData?.results) { @for(item of element.tmdbData.results.slice(0,4); track item.id) { @if(item.poster_path) { <img [src]="'https://image.tmdb.org/t/p/w500' + item.poster_path" class="h-full w-auto inline-block rounded shadow-lg"> } } } @else { <div class="flex gap-2 opacity-50"><div class="h-32 w-20 bg-slate-700 rounded"></div><div class="h-32 w-20 bg-slate-700 rounded"></div><div class="h-32 w-20 bg-slate-700 rounded"></div></div> } </div> }
+                  @case ('tmdb-cast') { <div class="w-full h-full flex items-start overflow-hidden p-2 gap-4 text-center text-xs pointer-events-none"> @if (element.tmdbData?.credits?.cast) { @for(actor of element.tmdbData.credits.cast.slice(0, 5); track actor.id) { @if(actor.profile_path) { <div class="flex flex-col items-center w-16 shrink-0"> <img [src]="'https://image.tmdb.org/t/p/w500' + actor.profile_path" class="w-12 h-12 object-cover rounded-full mb-1 shadow-md border border-white/10"> <span class="truncate w-full opacity-80">{{actor.name}}</span> </div> } } } @else { <div class="flex gap-4 opacity-50"><div class="w-12 h-12 rounded-full bg-slate-700"></div><div class="w-12 h-12 rounded-full bg-slate-700"></div></div> } </div> }
+                  @case ('tmdb-backdrop-slideshow') {
+                      @if (slideshowState()[element.id]?.backdrops.length) {
+                          @let state = slideshowState()[element.id];
+                          <div class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 pointer-events-none" [style.backgroundImage]="'url(' + state.backdrops[state.idx1] + ')'" [class.opacity-100]="!state.fade" [class.opacity-0]="state.fade"></div>
+                          <div class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 pointer-events-none" [style.backgroundImage]="'url(' + state.backdrops[state.idx2] + ')'" [class.opacity-0]="!state.fade" [class.opacity-100]="state.fade"></div>
+                      } @else {
+                          <div class="w-full h-full flex items-center justify-center bg-slate-800 text-slate-600"><i class="fa-solid fa-play-circle text-4xl"></i></div>
+                      }
                   }
                 }
-              }
+
             </div>
           }
         }
       </div>
     </div>
-  </main>
+  </div>
 
-  <!-- Right Sidebar: Layers & Properties -->
-  <aside class="w-64 md:w-80 bg-slate-800/50 border-l border-slate-700/50 flex flex-col shrink-0 transition-all duration-300" [class.w-16]="canvasConfig().scale < 0.6">
-    <!-- Tabs -->
-    <div class="flex border-b border-slate-700 shrink-0">
-      <button (click)="activeRightPanelTab.set('layers')" [class.bg-slate-700]="activeRightPanelTab() === 'layers'" class="flex-1 p-3 hover:bg-slate-600 transition-colors" title="Layers"><i class="fa-solid fa-layer-group"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Layers</span></button>
-      <button (click)="activeRightPanelTab.set('properties')" [disabled]="!selectedElement()" [class.bg-slate-700]="activeRightPanelTab() === 'properties'" class="flex-1 p-3 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors" title="Properties"><i class="fa-solid fa-sliders"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Properties</span></button>
-      <button (click)="activeRightPanelTab.set('code')" [class.bg-slate-700]="activeRightPanelTab() === 'code'" class="flex-1 p-3 hover:bg-slate-600 transition-colors" title="Export"><i class="fa-solid fa-code"></i> <span [class.hidden]="canvasConfig().scale < 0.6">Export</span></button>
+  <!-- RIGHT SIDEBAR -->
+  <aside class="w-80 bg-slate-950 border-l border-slate-800 flex flex-col shrink-0 z-20 shadow-xl">
+    <div class="tab-group pt-2 border-b border-slate-800">
+      <button (click)="activeRightPanelTab.set('properties')" [disabled]="!selectedElement()" class="tab" [class.active]="activeRightPanelTab() === 'properties'">
+        <i class="fa-solid fa-sliders"></i> Properties
+      </button>
+      <button (click)="activeRightPanelTab.set('layers')" class="tab" [class.active]="activeRightPanelTab() === 'layers'">
+        <i class="fa-solid fa-layer-group"></i> Layers
+      </button>
+      <button (click)="activeRightPanelTab.set('export')" class="tab" [class.active]="activeRightPanelTab() === 'export'">
+        <i class="fa-solid fa-code"></i> Export
+      </button>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4" [class.p-2]="canvasConfig().scale < 0.6">
-      <!-- Layers Panel -->
-      @if (activeRightPanelTab() === 'layers') {
-        <div class="space-y-2">
-          @for (element of elements().slice().reverse(); track element.id; let i = $index) {
-            <div 
-              class="bg-slate-700/50 p-2 rounded-md flex items-center justify-between cursor-pointer"
-              [class.ring-2]="selectedElementId() === element.id" [class.ring-indigo-500]="selectedElementId() === element.id"
-              (click)="selectElement(element.id)"
-              draggable="true" 
-              (dragstart)="$event.dataTransfer?.setData('text/plain', (elements().length - 1 - i).toString())" 
-              (dragover)="$event.preventDefault()" 
-              (drop)="reorderLayer(+($event.dataTransfer?.getData('text/plain') || 0), elements().length - 1 - i)">
-              <div class="flex items-center gap-2 truncate">
-                <i class="fa-solid fa-grip-vertical text-slate-500"></i>
-                <span class="truncate text-sm" [class.hidden]="canvasConfig().scale < 0.6">{{ element.type }}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <button (click)="toggleVisibility(element.id); $event.stopPropagation()" class="text-slate-400 hover:text-white transition-colors" [class.text-indigo-400]="element.visible">
-                  <i class="fa-solid" [class.fa-eye]="element.visible" [class.fa-eye-slash]="!element.visible"></i>
-                </button>
-              </div>
+    <div class="flex-1 overflow-y-auto custom-scrollbar bg-slate-950">
+        @if (activeRightPanelTab() === 'layers') {
+            <div class="p-3">
+                @if(elements().length === 0) {
+                    <div class="text-center text-slate-500 py-8 text-xs">No layers yet.</div>
+                }
+                
+                <div class="text-[10px] text-slate-500 mb-2 px-2"><i class="fa-solid fa-info-circle mr-1"></i> Drag a layer onto another to group/link them.</div>
+                
+                @for (element of elements().slice().reverse(); track element.id) {
+                    <div 
+                        draggable="true"
+                        (dragstart)="onLayerDragStart($event, element.id)"
+                        (dragover)="onLayerDragOver($event, element.id)"
+                        (dragleave)="onLayerDragLeave($event)"
+                        (drop)="onLayerDrop($event, element.id)"
+                        (click)="selectElement(element.id)" 
+                        class="layer-item group transition-all duration-200" 
+                        [class.selected]="selectedElementId() === element.id"
+                        [class.drag-over]="dragOverLayerId() === element.id">
+                        
+                        <div class="flex items-center gap-2 overflow-hidden flex-1">
+                            <i class="fa-solid text-xs w-4 text-center text-slate-500" 
+                               [class.fa-font]="element.type === 'text'" 
+                               [class.fa-image]="element.type.includes('image') || element.type.includes('poster') || element.type.includes('backdrop')"
+                               [class.fa-square]="element.type === 'shape'"></i>
+                            
+                            <div class="flex flex-col min-w-0">
+                                <span class="truncate font-medium leading-tight">{{ formatTypeName(element.type) }}</span>
+                                @if (element.linkGroup) {
+                                    <div class="flex items-center gap-1 mt-0.5">
+                                        <span class="text-[9px] bg-indigo-900/50 text-indigo-300 px-1 py-0.5 rounded border border-indigo-500/30 flex items-center gap-1">
+                                            <i class="fa-solid fa-link text-[8px]"></i>
+                                            {{element.linkGroup.replace('group_', 'Group ')}}
+                                        </span>
+                                        <button (click)="unlinkElement(element.id, $event)" class="text-slate-500 hover:text-red-400 px-1" title="Unlink"><i class="fa-solid fa-unlink text-[9px]"></i></button>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                             <button (click)="deleteElement(element.id); $event.stopPropagation()" class="p-1 text-slate-500 hover:text-red-400"><i class="fa-solid fa-trash text-xs"></i></button>
+                            <button (click)="toggleVisibility(element.id); $event.stopPropagation()" class="p-1 text-slate-500 hover:text-white">
+                                <i class="fa-solid fa-fw text-xs" [class.fa-eye]="element.visible" [class.fa-eye-slash]="!element.visible"></i>
+                            </button>
+                        </div>
+                    </div>
+                }
             </div>
-          }
-        </div>
-      }
+        }
 
-      <!-- Properties Panel -->
-      @if (activeRightPanelTab() === 'properties' && selectedElement(); as el) {
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-              <h3 class="text-lg font-semibold capitalize">{{ formatTypeName(el.type) }}</h3>
-              <button (click)="deleteElement(el.id)" class="px-3 py-1 bg-red-600/50 hover:bg-red-600 rounded-md text-white transition-colors">Delete</button>
+        @if (activeRightPanelTab() === 'export') {
+          <div class="p-5 h-full flex flex-col gap-4">
+            <div class="bg-indigo-900/10 border border-indigo-500/20 rounded-lg p-4">
+                <h3 class="text-indigo-400 font-semibold mb-1">Ready to Publish?</h3>
+                <p class="text-xs text-slate-400">Download a standalone PHP file containing your layout and logic. Upload to any server to view.</p>
+            </div>
+            
+            <div class="flex-1 relative bg-slate-900 rounded-lg border border-slate-800 overflow-hidden group">
+                <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button class="text-xs bg-slate-800 text-white px-2 py-1 rounded border border-slate-700">Copy</button>
+                </div>
+                <pre class="p-4 text-[10px] text-slate-300 font-mono overflow-auto h-full custom-scrollbar">{{ generatedPhpCode() }}</pre>
+            </div>
+            
+            <button (click)="downloadPhpFile()" class="btn btn-primary w-full py-3">
+                <i class="fa-solid fa-download"></i> Download .php File
+            </button>
           </div>
-          
-          @if (el.type.startsWith('tmdb')) {
-            <details class="p-3 bg-slate-700/50 rounded-md" open>
-              <summary class="font-semibold list-none cursor-pointer">TMDB Settings</summary>
-              <div class="mt-2 space-y-2">
-              @if (el.type === 'tmdb-poster-scroll' || el.type === 'tmdb-backdrop-slideshow') {
-                <label class="block text-sm">Collection Endpoint</label>
-                <select [ngModel]="el.tmdbEndpoint" (ngModelChange)="updateElementProperty('tmdbEndpoint', $event); fetchTmdbDataForElement(el.id)" class="w-full bg-slate-900/50 p-2 rounded-md border-slate-700 border focus:ring-indigo-500 focus:border-indigo-500">
-                  <option [ngValue]="undefined">Select Endpoint</option>
-                  @for(endpoint of tmdbEndpoints; track endpoint.key) { <option [value]="endpoint.key">{{ endpoint.name }}</option> }
-                </select>
-              } @else {
-                <label class="block text-sm">Movie ID</label>
-                <input type="text" [ngModel]="el.tmdbId" (ngModelChange)="updateElementProperty('tmdbId', $event)" (blur)="fetchTmdbDataForElement(el.id)" class="w-full bg-slate-900/50 p-2 rounded-md border-slate-700 border focus:ring-indigo-500 focus:border-indigo-500">
-              }
-              </div>
-            </details>
-          }
+        }
 
-          @if (el.type === 'text' || el.type === 'image') {
-            <details class="p-3 bg-slate-700/50 rounded-md" open>
-              <summary class="font-semibold list-none cursor-pointer">Content</summary>
-              <div class="mt-2">
-              @if (el.type === 'text') { <textarea [ngModel]="el.content" (ngModelChange)="updateElementProperty('content', $event)" rows="3" class="w-full bg-slate-900/50 p-2 rounded-md border-slate-700 border focus:ring-indigo-500"></textarea> }
-              @if (el.type === 'image') { <input type="text" [ngModel]="el.content" (ngModelChange)="updateElementProperty('content', $event)" class="w-full bg-slate-900/50 p-2 rounded-md border-slate-700 border focus:ring-indigo-500"> }
+        @if (activeRightPanelTab() === 'properties' && selectedElement(); as el) {
+            <div class="bg-slate-950">
+              <div class="panel-header">
+                <span class="panel-title">{{ formatTypeName(el.type) }} Settings</span>
+                <button (click)="deleteElement(el.id)" class="text-slate-500 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can"></i></button>
               </div>
-            </details>
-          }
-          
-          <details class="p-3 bg-slate-700/50 rounded-md" open>
-            <summary class="font-semibold list-none cursor-pointer">Layout & Position</summary>
-            <div class="mt-2">
-              <div class="grid grid-cols-2 gap-3 mb-3">
-                <div><label class="text-sm">X</label><input type="number" [ngModel]="el.x" (ngModelChange)="updateElementProperty('x', +$event)" class="w-full bg-slate-900/50 p-2 rounded-md"></div>
-                <div><label class="text-sm">Y</label><input type="number" [ngModel]="el.y" (ngModelChange)="updateElementProperty('y', +$event)" class="w-full bg-slate-900/50 p-2 rounded-md"></div>
-                <div><label class="text-sm">W</label><input type="number" [ngModel]="el.width" (ngModelChange)="updateElementProperty('width', +$event)" class="w-full bg-slate-900/50 p-2 rounded-md"></div>
-                <div><label class="text-sm">H</label><input type="number" [ngModel]="el.height" (ngModelChange)="updateElementProperty('height', +$event)" class="w-full bg-slate-900/50 p-2 rounded-md"></div>
-              </div>
-              <div class="grid grid-cols-2 gap-2">
-                <button (click)="alignElement(el.id, 'fill')" class="bg-slate-600/50 hover:bg-slate-600 p-2 rounded">Fill Canvas</button>
-                <button (click)="alignElement(el.id, 'center')" class="bg-slate-600/50 hover:bg-slate-600 p-2 rounded">Center</button>
-                <button (click)="alignElement(el.id, 'fitW')" class="bg-slate-600/50 hover:bg-slate-600 p-2 rounded">Fit Width</button>
-                <button (click)="alignElement(el.id, 'fitH')" class="bg-slate-600/50 hover:bg-slate-600 p-2 rounded">Fit Height</button>
-              </div>
-            </div>
-          </details>
-          
-          @if(['text', 'tmdb-title', 'tmdb-overview', 'tmdb-tagline', 'tmdb-release-date', 'tmdb-runtime', 'tmdb-rating', 'tmdb-genres'].includes(el.type)) {
-            <details class="p-3 bg-slate-700/50 rounded-md" open>
-              <summary class="font-semibold list-none cursor-pointer">Typography</summary>
-              <div class="mt-2 space-y-3">
-                <div class="grid grid-cols-2 gap-3">
-                  <div><label class="text-sm">Font</label><select [ngModel]="el.styles.fontFamily" (ngModelChange)="updateElementStyle('fontFamily', $event)" class="w-full bg-slate-900/50 p-2 rounded-md"><option *ngFor="let font of fonts" [value]="font">{{font}}</option></select></div>
-                  <div><label class="text-sm">Size</label><input type="number" [ngModel]="el.styles.fontSize" (ngModelChange)="updateElementStyle('fontSize', +$event)" class="w-full bg-slate-900/50 p-2 rounded-md"></div>
-                  <div><label class="text-sm">Weight</label><select [ngModel]="el.styles.fontWeight" (ngModelChange)="updateElementStyle('fontWeight', $event)" class="w-full bg-slate-900/50 p-2 rounded-md"><option value="400">Normal</option><option value="500">Medium</option><option value="600">SemiBold</option><option value="700">Bold</option></select></div>
-                  <div><label class="text-sm">Align</label><select [ngModel]="el.styles.textAlign" (ngModelChange)="updateElementStyle('textAlign', $event)" class="w-full bg-slate-900/50 p-2 rounded-md"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></div>
-                </div>
-                <div><label class="text-sm">Color</label><input type="color" [ngModel]="el.styles.color" (ngModelChange)="updateElementStyle('color', $event)" class="w-full h-9 bg-transparent rounded-md appearance-none cursor-pointer border-none p-0"></div>
-              </div>
-            </details>
-          }
-
-          <details class="p-3 bg-slate-700/50 rounded-md" open>
-            <summary class="font-semibold list-none cursor-pointer">Appearance</summary>
-            <div class="mt-2 space-y-3">
-              <div><label class="text-sm">Bg Color</label><input type="color" [ngModel]="el.styles.backgroundColor" (ngModelChange)="updateElementStyle('backgroundColor', $event)" class="w-full h-9 bg-transparent rounded-md"></div>
-              <div><label class="text-sm">Opacity ({{ el.styles.opacity }})</label><input type="range" min="0" max="1" step="0.05" [ngModel]="el.styles.opacity" (ngModelChange)="updateElementStyle('opacity', +$event)" class="w-full"></div>
-              <div class="grid grid-cols-2 gap-3">
-                <div><label class="text-sm">Radius</label><input type="number" [ngModel]="el.styles.borderRadius" (ngModelChange)="updateElementStyle('borderRadius', +$event)" class="w-full bg-slate-900/50 p-2 rounded-md"></div>
-                <div><label class="text-sm">Border</label><input type="number" [ngModel]="el.styles.borderWidth" (ngModelChange)="updateElementStyle('borderWidth', +$event)" class="w-full bg-slate-900/50 p-2 rounded-md"></div>
-              </div>
-              <div><label class="text-sm">Border Color</label><input type="color" [ngModel]="el.styles.borderColor" (ngModelChange)="updateElementStyle('borderColor', $event)" class="w-full h-9 bg-transparent rounded-md"></div>
-            </div>
-          </details>
-
-          <details class="p-3 bg-slate-700/50 rounded-md" open>
-            <summary class="font-semibold list-none cursor-pointer">Effects</summary>
-            <div class="mt-2 space-y-4">
-               <!-- Gradient -->
-                <div>
-                    <label class="text-sm font-medium">Background Gradient</label>
-                    @if (!el.styles.backgroundGradient) { <button (click)="updateElementStyle('backgroundGradient', {angle: 90, from: '#4f46e5', to: '#a855f7'})" class="text-xs text-indigo-400 hover:underline">Enable</button> }
-                    @if (el.styles.backgroundGradient; as grad) {
-                       <div class="space-y-2 mt-1">
-                          <label class="text-xs">Angle: {{grad.angle}}deg</label><input type="range" min="0" max="360" [ngModel]="grad.angle" (ngModelChange)="updateGradientProperty('angle', +$event)" class="w-full">
-                          <div class="grid grid-cols-2 gap-2">
-                            <input type="color" [ngModel]="grad.from" (ngModelChange)="updateGradientProperty('from', $event)" class="w-full h-9 bg-transparent rounded-md">
-                            <input type="color" [ngModel]="grad.to" (ngModelChange)="updateGradientProperty('to', $event)" class="w-full h-9 bg-transparent rounded-md">
-                          </div>
-                          <button (click)="updateElementStyle('backgroundGradient', undefined)" class="text-xs text-red-400 hover:underline">Remove</button>
-                       </div>
-                    }
-                </div>
-                <!-- Box Shadow -->
-                <div>
-                    <label class="text-sm font-medium">Box Shadow</label>
-                    @if (!el.styles.boxShadow) { <button (click)="updateElementStyle('boxShadow', {x: 0, y: 10, blur: 15, color: '#00000080'})" class="text-xs text-indigo-400 hover:underline">Enable</button> }
-                    @if (el.styles.boxShadow; as shadow) {
-                       <div class="space-y-2 mt-1">
-                         <div class="grid grid-cols-3 gap-2">
-                           <input type="number" title="X Offset" [ngModel]="shadow.x" (ngModelChange)="updateBoxShadowProperty('x', +$event)" class="w-full bg-slate-900/50 p-1 rounded-md">
-                           <input type="number" title="Y Offset" [ngModel]="shadow.y" (ngModelChange)="updateBoxShadowProperty('y', +$event)" class="w-full bg-slate-900/50 p-1 rounded-md">
-                           <input type="number" title="Blur" [ngModel]="shadow.blur" (ngModelChange)="updateBoxShadowProperty('blur', +$event)" class="w-full bg-slate-900/50 p-1 rounded-md">
+              
+              <!-- TMDB CONFIGURATION -->
+              @if (el.type.startsWith('tmdb-')) {
+                <details class="accordion" open>
+                  <summary>TMDB Data Source</summary>
+                  <div class="accordion-content space-y-4">
+                    @if(el.type.includes('scroll') || el.type.includes('slideshow')) {
+                      <div class="input-group">
+                        <label class="label">Collection Type</label>
+                        <div class="flex bg-slate-900 rounded p-1 border border-slate-700">
+                             <button (click)="updateElementProperty('tmdbCollectionType', 'movie'); fetchTmdbDataForElement(el.id)" class="flex-1 py-1 text-xs rounded transition-colors" [class.bg-indigo-600]="el.tmdbCollectionType === 'movie'" [class.text-white]="el.tmdbCollectionType === 'movie'" [class.text-slate-400]="el.tmdbCollectionType !== 'movie'">Movies</button>
+                             <button (click)="updateElementProperty('tmdbCollectionType', 'tv'); fetchTmdbDataForElement(el.id)" class="flex-1 py-1 text-xs rounded transition-colors" [class.bg-indigo-600]="el.tmdbCollectionType === 'tv'" [class.text-white]="el.tmdbCollectionType === 'tv'" [class.text-slate-400]="el.tmdbCollectionType !== 'tv'">TV</button>
+                        </div>
+                      </div>
+                      <div class="input-group">
+                          <label class="label">Endpoint</label>
+                          <select [ngModel]="el.tmdbEndpoint" (ngModelChange)="updateElementProperty('tmdbEndpoint', $event); fetchTmdbDataForElement(el.id)" class="select" [disabled]="!el.tmdbCollectionType">
+                            @for(endpoint of availableCollectionEndpoints(); track endpoint.key) { <option [value]="endpoint.key">{{ endpoint.name }}</option> }
+                          </select>
+                      </div>
+                      
+                      @if(el.tmdbEndpoint?.startsWith('discover')) {
+                        <div class="p-3 bg-slate-900 rounded border border-slate-700/50 mt-2">
+                           <div class="label mb-2 text-indigo-400">Discover Filters</div>
+                           <div class="input-group">
+                               <label class="label">Sort By</label>
+                               <select [ngModel]="el.discoverFilters.sortBy" (ngModelChange)="updateDiscoverFilter('sortBy', $event); fetchTmdbDataForElement(el.id)" class="select text-xs"> 
+                                   @for(opt of availableSortOptions(); track opt.key){ <option [value]="opt.key">{{opt.name}}</option> } 
+                               </select>
+                           </div>
+                           <div class="input-group">
+                               <label class="label">Year</label>
+                               <input type="number" placeholder="e.g. 2024" [ngModel]="el.discoverFilters.year" (ngModelChange)="updateDiscoverFilter('year', +$event); fetchTmdbDataForElement(el.id)" class="input text-xs">
+                           </div>
+                           <div class="input-group mb-0">
+                               <label class="label">Genres</label>
+                              <div class="h-24 overflow-y-auto bg-slate-950 rounded border border-slate-800 p-2 space-y-1 custom-scrollbar">
+                                @for(genre of availableGenres(); track genre.id) {
+                                  <label class="flex items-center space-x-2 text-xs cursor-pointer hover:text-white text-slate-400 transition-colors">
+                                      <input type="checkbox" [checked]="el.discoverFilters.genres.includes(genre.id)" (change)="$event.target.checked ? el.discoverFilters.genres.push(genre.id) : el.discoverFilters.genres.splice(el.discoverFilters.genres.indexOf(genre.id), 1); fetchTmdbDataForElement(el.id)" class="rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-indigo-500">
+                                      <span>{{genre.name}}</span>
+                                  </label>
+                                }
+                              </div>
+                           </div>
+                        </div>
+                      }
+                    } @else {
+                        <!-- Single Item Selection -->
+                         <div class="input-group">
+                             <label class="label flex justify-between items-center">
+                                 Link Group ID
+                                 <span class="text-[10px] font-normal text-indigo-400" title="Elements with same ID share content">?</span>
+                             </label>
+                             <input type="text" [ngModel]="el.linkGroup" (ngModelChange)="updateElementProperty('linkGroup', $event)" class="input" placeholder="e.g. hero-section">
+                             <p class="text-[10px] text-slate-500 mt-1">Drag layers onto each other to link them automatically.</p>
                          </div>
-                         <input type="color" [ngModel]="shadow.color" (ngModelChange)="updateBoxShadowProperty('color', $event)" class="w-full h-9 bg-transparent rounded-md">
-                         <button (click)="updateElementStyle('boxShadow', undefined)" class="text-xs text-red-400 hover:underline">Remove</button>
-                       </div>
+
+                        <div class="input-group">
+                          <label class="label">Media Type</label>
+                          <div class="flex bg-slate-900 rounded p-1 border border-slate-700">
+                             <button (click)="updateElementProperty('tmdbItemType', 'movie')" class="flex-1 py-1 text-xs rounded transition-colors" [class.bg-indigo-600]="el.tmdbItemType === 'movie'" [class.text-white]="el.tmdbItemType === 'movie'" [class.text-slate-400]="el.tmdbItemType !== 'movie'">Movie</button>
+                             <button (click)="updateElementProperty('tmdbItemType', 'tv')" class="flex-1 py-1 text-xs rounded transition-colors" [class.bg-indigo-600]="el.tmdbItemType === 'tv'" [class.text-white]="el.tmdbItemType === 'tv'" [class.text-slate-400]="el.tmdbItemType !== 'tv'">TV Show</button>
+                          </div>
+                        </div>
+                        
+                        <div class="input-group relative">
+                          <label class="label">Quick Search</label>
+                          <div class="relative">
+                              <input type="text" #searchInput (keyup)="searchTmdb(searchInput.value)" placeholder="Type movie name..." class="input pl-8">
+                              <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2.5 text-slate-500 text-xs"></i>
+                          </div>
+                          
+                          @if (isSearching()) { <div class="absolute right-2 top-8 text-xs text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i></div> }
+                          
+                          @if(tmdbSearchResults().length > 0) {
+                            <div class="absolute z-50 w-full bg-slate-900 border border-slate-700 rounded-lg mt-1 max-h-64 overflow-y-auto shadow-2xl custom-scrollbar">
+                              @for(item of tmdbSearchResults(); track item.id) {
+                                <button (click)="selectTmdbItem(item); searchInput.value = ''" class="w-full text-left p-2 hover:bg-indigo-600/20 hover:border-l-2 hover:border-indigo-500 flex items-start gap-3 border-b border-slate-800 last:border-0 transition-all">
+                                  <img [src]="'https://image.tmdb.org/t/p/w92' + (item.poster_path || item.profile_path)" class="w-8 h-12 object-cover rounded bg-slate-800 shrink-0">
+                                  <div class="min-w-0">
+                                      <p class="font-semibold text-slate-200 truncate text-xs">{{ item.title || item.name }}</p>
+                                      <p class="text-[10px] text-slate-500">{{ item.release_date || item.first_air_date | slice:0:4 }}</p>
+                                  </div>
+                                </button>
+                              }
+                            </div>
+                          }
+                        </div>
+
+                        <div class="input-group">
+                            <label class="label">Manual ID</label>
+                            <div class="flex gap-2">
+                                <input type="text" [ngModel]="el.tmdbId" (ngModelChange)="updateElementProperty('tmdbId', $event)" class="input font-mono text-xs" placeholder="ID">
+                                <button (click)="fetchTmdbDataForElement(el.id)" class="btn btn-secondary px-3" title="Refresh Data"><i class="fa-solid fa-sync"></i></button>
+                            </div>
+                        </div>
                     }
+                  </div>
+                </details>
+              }
+
+              <!-- Content Specific -->
+              @if(el.type === 'text') { 
+                  <div class="p-4 border-b border-slate-800">
+                      <label class="label">Text Content</label>
+                      <textarea [ngModel]="el.content" (ngModelChange)="updateElementProperty('content', $event)" rows="3" class="textarea resize-y"></textarea>
+                  </div>
+              }
+              @if(el.type === 'image') { 
+                  <div class="p-4 border-b border-slate-800">
+                      <label class="label">Image Source URL</label>
+                      <input type="text" [ngModel]="el.content" (ngModelChange)="updateElementProperty('content', $event)" class="input text-xs">
+                  </div> 
+              }
+
+              <!-- LAYOUT -->
+              <details class="accordion" open>
+                <summary>Layout & Position</summary>
+                <div class="accordion-content">
+                  <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div><label class="label">X Position</label><input type="number" [ngModel]="el.x" (ngModelChange)="updateElementProperty('x', +$event)" class="input"></div>
+                    <div><label class="label">Y Position</label><input type="number" [ngModel]="el.y" (ngModelChange)="updateElementProperty('y', +$event)" class="input"></div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3 mb-3">
+                    <div><label class="label">Width</label><input type="number" [ngModel]="el.width" (ngModelChange)="updateElementProperty('width', +$event)" class="input"></div>
+                    <div><label class="label">Height</label><input type="number" [ngModel]="el.height" (ngModelChange)="updateElementProperty('height', +$event)" class="input"></div>
+                  </div>
+                  <div class="col-span-2">
+                    <div class="flex justify-between mb-1"><label class="label">Rotation</label><span class="text-xs text-slate-400">{{el.rotation}}°</span></div>
+                    <div class="flex items-center gap-2">
+                        <input type="range" min="0" max="360" [ngModel]="el.rotation" (ngModelChange)="updateElementProperty('rotation', +$event)" class="flex-1">
+                        <input type="number" [ngModel]="el.rotation" (ngModelChange)="updateElementProperty('rotation', +$event)" class="input w-16 text-center">
+                    </div>
+                  </div>
                 </div>
-                <!-- Filters -->
-                <div class="grid grid-cols-2 gap-3">
-                   <div><label class="text-sm">Backdrop Blur</label><input type="range" min="0" max="20" step="1" [ngModel]="el.styles.filterBlur" (ngModelChange)="updateElementStyle('filterBlur', +$event)" class="w-full"></div>
-                   <div><label class="text-sm">Grayscale</label><input type="range" min="0" max="1" step="0.1" [ngModel]="el.styles.filterGrayscale" (ngModelChange)="updateElementStyle('filterGrayscale', +$event)" class="w-full"></div>
+              </details>
+              
+              <!-- APPEARANCE (Includes Image Fit) -->
+              <details class="accordion" open>
+                <summary>Appearance</summary>
+                <div class="accordion-content space-y-4">
+                 
+                 <!-- Image Scaling Control -->
+                 @if(['image', 'tmdb-poster', 'tmdb-backdrop', 'tmdb-logo', 'tmdb-network-logo'].includes(el.type)) {
+                     <div>
+                         <label class="label">Image Fit</label>
+                         <div class="flex bg-slate-900 rounded border border-slate-700 p-1">
+                             <button (click)="updateElementProperty('imageFit', 'cover')" class="flex-1 py-1 rounded text-xs transition-colors" [class.bg-indigo-600]="el.imageFit === 'cover'" [class.text-white]="el.imageFit === 'cover'" [class.text-slate-400]="el.imageFit !== 'cover'">Cover</button>
+                             <button (click)="updateElementProperty('imageFit', 'contain')" class="flex-1 py-1 rounded text-xs transition-colors" [class.bg-indigo-600]="el.imageFit === 'contain'" [class.text-white]="el.imageFit === 'contain'" [class.text-slate-400]="el.imageFit !== 'contain'">Contain</button>
+                             <button (click)="updateElementProperty('imageFit', 'fill')" class="flex-1 py-1 rounded text-xs transition-colors" [class.bg-indigo-600]="el.imageFit === 'fill'" [class.text-white]="el.imageFit === 'fill'" [class.text-slate-400]="el.imageFit !== 'fill'">Fill</button>
+                         </div>
+                     </div>
+                 }
+
+                 <div>
+                    <label class="label">Background Color</label>
+                    <div class="flex items-center gap-2 mb-2">
+                        <input type="color" [ngModel]="el.styles.backgroundColor" (ngModelChange)="updateElementStyle('backgroundColor', $event)" class="w-8 h-8 rounded bg-transparent cursor-pointer border-none p-0">
+                        <input type="text" [ngModel]="el.styles.backgroundColor" (ngModelChange)="updateElementStyle('backgroundColor', $event)" class="input text-xs uppercase">
+                    </div>
+                    
+                    <div class="flex justify-between mb-1"><label class="label text-[10px]">BG Opacity</label><span class="text-xs text-slate-400">{{Math.round((el.styles.backgroundOpacity ?? 1) * 100)}}%</span></div>
+                    <input type="range" min="0" max="1" step="0.01" [ngModel]="el.styles.backgroundOpacity ?? 1" (ngModelChange)="updateElementStyle('backgroundOpacity', +$event)">
+                 </div>
+
+                 <div>
+                    <div class="flex justify-between mb-1"><label class="label">Element Opacity</label><span class="text-xs text-slate-400">{{Math.round(el.styles.opacity * 100)}}%</span></div>
+                    <input type="range" min="0" max="1" step="0.01" [ngModel]="el.styles.opacity" (ngModelChange)="updateElementStyle('opacity', +$event)">
+                 </div>
+
+                 <div>
+                     <div class="flex justify-between mb-1"><label class="label">Border Radius</label><span class="text-xs text-slate-400">{{el.styles.borderRadius}}px</span></div>
+                     <input type="range" min="0" max="100" [ngModel]="el.styles.borderRadius" (ngModelChange)="updateElementStyle('borderRadius', +$event)">
+                 </div>
+                 
+                 <div>
+                    <div class="flex justify-between mb-1"><label class="label">Blur Filter</label><span class="text-xs text-slate-400">{{el.styles.filterBlur}}px</span></div>
+                    <input type="range" min="0" max="20" [ngModel]="el.styles.filterBlur" (ngModelChange)="updateElementStyle('filterBlur', +$event)">
+                 </div>
+
                 </div>
+              </details>
+
+              <!-- TYPOGRAPHY -->
+              @if(!['image', 'shape', 'tmdb-poster', 'tmdb-backdrop', 'tmdb-logo', 'tmdb-network-logo'].includes(el.type)) {
+              <details class="accordion">
+                <summary>Typography</summary>
+                <div class="accordion-content space-y-3">
+                  <div class="grid grid-cols-2 gap-3">
+                      <div class="col-span-2"><label class="label">Font Family</label><select [ngModel]="el.styles.fontFamily" (ngModelChange)="updateElementStyle('fontFamily', $event)" class="select"> @for(font of fonts; track font){ <option [value]="font">{{font}}</option> } </select></div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div><label class="label">Size (px)</label><input type="number" [ngModel]="el.styles.fontSize" (ngModelChange)="updateElementStyle('fontSize', +$event)" class="input"></div>
+                    <div><label class="label">Weight</label><select [ngModel]="el.styles.fontWeight" (ngModelChange)="updateElementStyle('fontWeight', $event)" class="select"><option value="400">Regular</option><option value="500">Medium</option><option value="600">Semibold</option><option value="700">Bold</option></select></div>
+                  </div>
+                  <div>
+                      <label class="label">Alignment</label>
+                      <div class="flex bg-slate-900 rounded border border-slate-700 p-1">
+                        <button (click)="updateElementStyle('textAlign', 'left')" class="flex-1 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" [class.text-indigo-400]="el.styles.textAlign === 'left'"><i class="fa-solid fa-align-left"></i></button>
+                        <button (click)="updateElementStyle('textAlign', 'center')" class="flex-1 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" [class.text-indigo-400]="el.styles.textAlign === 'center'"><i class="fa-solid fa-align-center"></i></button>
+                        <button (click)="updateElementStyle('textAlign', 'right')" class="flex-1 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-colors" [class.text-indigo-400]="el.styles.textAlign === 'right'"><i class="fa-solid fa-align-right"></i></button>
+                      </div>
+                  </div>
+                  <div><label class="label">Text Color</label>
+                    <div class="flex items-center gap-2">
+                        <input type="color" [ngModel]="el.styles.color" (ngModelChange)="updateElementStyle('color', $event)" class="w-8 h-8 rounded bg-transparent cursor-pointer border-none p-0">
+                        <input type="text" [ngModel]="el.styles.color" (ngModelChange)="updateElementStyle('color', $event)" class="input text-xs uppercase">
+                    </div>
+                  </div>
+                </div>
+              </details>
+              }
             </div>
-          </details>
-        </div>
-      }
-
-      <!-- Code Panel -->
-      @if (activeRightPanelTab() === 'code') {
-        <div>
-          <h3 class="text-lg font-semibold mb-2">Export to PHP</h3>
-          <p class="text-sm text-slate-400 mb-4">A self-contained PHP file that dynamically fetches the latest data from TMDB.</p>
-          <button (click)="downloadPhpFile()" [disabled]="!tmdbApiKey()" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4 rounded-md disabled:bg-slate-600 disabled:cursor-not-allowed transition-colors">
-            Download layout.php
-          </button>
-          <pre class="w-full mt-4 bg-slate-900/50 p-2 rounded-md overflow-auto text-xs h-[50vh]"><code>{{ generatedPhpCode() }}</code></pre>
-        </div>
-      }
+        } @else if (activeRightPanelTab() === 'properties') {
+            <div class="h-full flex flex-col items-center justify-center text-slate-600 p-6 text-center">
+                <div class="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center mb-4 shadow-inner">
+                    <i class="fa-solid fa-arrow-pointer text-2xl opacity-50"></i>
+                </div>
+                <h3 class="text-slate-400 font-medium mb-2">No Selection</h3>
+                <p class="text-xs text-slate-500">Select an element on the canvas to edit its properties.</p>
+            </div>
+        }
     </div>
-
   </aside>
 </div>
