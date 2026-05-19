@@ -1,4 +1,4 @@
-# Logs
+# Logs and diagnostics
 logs
 *.log
 npm-debug.log*
@@ -6,17 +6,36 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+*.tsbuildinfo
 
+# Dependencies
 node_modules
+
+# Angular / Vite build output and caches
 dist
 dist-ssr
+.angular
+.vite
+.cache
+
+# Local environment and secrets
 *.local
+.env
+.env.*
+!.env.example
+
+# Generated layout exports
+layout.php
+tmdb-layout-project.json
+tmdb-layout-*.json
 
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
 .idea
 .DS_Store
+Thumbs.db
 *.suo
 *.ntvs*
 *.njsproj

@@ -24,7 +24,7 @@ A powerful, browser-based visual editor for creating dynamic layouts using The M
   - Text blocks with custom styling
   - Images with URL support
   - Shapes and backgrounds
-  
+
 - **TMDB Data Elements**
   - **Poster** - Movie/TV show poster images
   - **Backdrop** - High-resolution backdrop images
@@ -121,7 +121,7 @@ Add custom **prefix/suffix** text:
   - Bring to front / Send to back
   - Alignment options
   - Image fit modes (Cover/Contain/Fill)
-  
+
 - **Keyboard Shortcuts**
   - `Ctrl+Z` / `Cmd+Z` - Undo
   - `Ctrl+Shift+Z` / `Cmd+Shift+Z` - Redo
@@ -261,9 +261,13 @@ Add custom **prefix/suffix** text:
 
 The PHP export includes:
 - Responsive CSS (percentage-based positioning)
-- TMDB API integration
+- TMDB API integration through the generated PHP file
+- Server-side credential handling (the browser receives source IDs, not the TMDB key/token)
+- File-based response caching with lock protection for concurrent viewers
 - Auto-updating content
 - Production-ready code
+
+**Concurrent viewer behavior:** the exported PHP file now acts as a same-origin TMDB proxy. Browser JavaScript calls `layout.php?tmdb_source=<id>`, and PHP fetches/caches the TMDB response server-side. Cache writes use file locks so multiple users loading the same layout at once do not all request the same TMDB endpoint simultaneously. Serve the export through PHP; do not publish it as plain text.
 
 ---
 
