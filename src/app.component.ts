@@ -94,6 +94,8 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   private searchTerms = new Subject<string>();
   private authCheckSubject = new Subject<void>();
   private destroy$ = new Subject<void>();
+  private tmdbFetchSequence = 0;
+  private tmdbFetchTokens: Map<string, number> = new Map();
   private readonly projectStorageKey = 'tmdbLayoutProject';
   private readonly maxHistoryStates = 50;
   private readonly defaultCollectionItemLimit = 20;
@@ -223,9 +225,12 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   generatedPhpCode = signal('');
   copySuccess = signal(false);
 
-  private tmdbDataFetchKey = computed(() => JSON.stringify(
-    this.elements()
+  private tmdbDataFetchKey = computed(() => {
+    const elements = this.elements();
+    return JSON.stringify(
+      elements
       .filter(el => el.type.startsWith('tmdb-'))
+      .filter(el => this.isCollectionElement(el) || !this.getCollectionMasterForElement(el, elements))
       .map(el => ({
         id: el.id,
         type: el.type,
@@ -237,7 +242,8 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         collectionItemLimit: this.isCollectionElement(el) ? this.getEffectiveCollectionItemLimit(el) : '',
         linkGroup: el.linkGroup || ''
       }))
-  ));
+    );
+  });
 
   availableCollectionEndpoints = computed(() => {
     const el = this.selectedElement();
@@ -1064,7 +1070,12 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       return el;
     }));
 
-    if (this.isCollectionElement(targetEl)) this.fetchTmdbDataForElement(targetId);
+    if (this.isCollectionElement(targetEl)) {
+      this.fetchTmdbDataForElement(targetId);
+      this.saveStateToHistory();
+      return;
+    }
+
     if (this.isCollectionElement(sourceEl)) this.fetchTmdbDataForElement(elementId);
     else if (tmdbId) this.propagateTmdbId(groupId, tmdbId, itemType, targetId);
     else this.fetchTmdbDataForElement(elementId);
@@ -1214,6 +1225,11 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   fetchTmdbDataForElement(id: string, isInitial = false) {
     const element = this.elements().find(el => el.id === id);
     if (!element || !this.isApiConfigured() || (isInitial && element.tmdbData)) return;
+    const requestToken = ++this.tmdbFetchSequence;
+    this.tmdbFetchTokens.set(id, requestToken);
+    const requestTmdbId = element.tmdbId ? String(element.tmdbId) : '';
+    const requestItemType = element.tmdbItemType;
+    const requestEndpoint = element.tmdbEndpoint || '';
 
     let headers = new HttpHeaders({'Content-Type': 'application/json;charset=utf-8'});
     const params = new URLSearchParams({ language: this.language(), include_adult: this.includeAdult().toString() });
@@ -1270,6 +1286,16 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
 
     obs.pipe(catchError(() => of(null)), takeUntil(this.destroy$)).subscribe(data => {
       if (!data) return;
+      if (this.tmdbFetchTokens.get(id) !== requestToken) return;
+      const latest = this.elements().find(el => el.id === id);
+      if (!latest) return;
+      if (!this.isCollectionElement(latest)) {
+        if (requestTmdbId && String(latest.tmdbId || '') !== requestTmdbId) return;
+        if (latest.tmdbItemType !== requestItemType) return;
+      } else if ((latest.tmdbEndpoint || '') !== requestEndpoint) {
+        return;
+      }
+
       this.elements.update(els => els.map(el => el.id === id ? {...el, tmdbData: data} : el));
       if (element.type === 'tmdb-backdrop-slideshow') this.setupSlideshow(id);
       if (element.type === 'tmdb-poster-scroll') this.setupPosterScroll(id);
@@ -1355,7 +1381,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                 return {...s, [elementId]: { ...current, sceneFade: true, fade: false } };
             });
             this.cdr.detectChanges();
-            setTimeout(() => advanceSlide(), 650);
+            setTimeout(() => advanceSlide(), this.sceneFadeDurationMs);
             return;
         }
 

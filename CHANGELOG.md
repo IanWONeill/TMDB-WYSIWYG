@@ -11,6 +11,8 @@ This major release makes TMDB collection slides behave as one synchronised scene
 - Global Scene Fade now fades the whole linked scene out, swaps backdrop and linked content while hidden, then fades the full scene back in.
 - Protected poster scrolls and backdrop slideshows from being overwritten by single-item sync updates.
 - Syncing an element to an already-loaded collection source now refreshes that source with enriched scene data.
+- Fixed a sync race where adding a poster or detail layer to a collection slideshow could start an independent single-item fetch and briefly show artwork from a different TMDB item.
+- Collection-mastered poster, overview, cast, rating, logo, and dynamic-field layers no longer auto-fetch separately as the slideshow rotates, and stale TMDB responses are ignored if the layer has already moved to a newer slide item.
 - Generated PHP exports now use the same shared-scene model, enriched detail cache, collection item limit, and global fade timing.
 
 ### Practical Outcome
