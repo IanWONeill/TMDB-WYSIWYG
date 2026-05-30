@@ -152,7 +152,8 @@ Add custom **prefix/suffix** text:
    ```bash
    npm run dev
    ```
-   Open http://localhost:3000. If port `3000` is already in use, the dev server starts on http://localhost:30000 instead.
+   Open http://localhost:3000
+   
 
 4. **Build for production**
    ```bash
