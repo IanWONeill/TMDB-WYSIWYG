@@ -24,6 +24,15 @@
         <i class="fa-solid fa-xmark w-4 text-center"></i> Clear Multi Selection
       </button>
     }
+    @if (isGroupedElement(contextMenu().elementId)) {
+      <button (click)="toggleGroupLockFromContext(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors">
+        <i class="fa-solid w-4 text-center" [class.fa-lock-open]="isElementLayoutGroupLocked(contextMenu().elementId)" [class.fa-lock]="!isElementLayoutGroupLocked(contextMenu().elementId)"></i>
+        {{ isElementLayoutGroupLocked(contextMenu().elementId) ? 'Unlock Group' : 'Lock Group' }}
+      </button>
+      <button (click)="ungroupLayoutGroupFromContext(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors">
+        <i class="fa-solid fa-object-ungroup w-4 text-center"></i> Ungroup Elements
+      </button>
+    }
 
     <div class="my-1 border-t border-[#254261]"></div>
 
@@ -77,6 +86,8 @@
     }
 
     <button (click)="bringToFront(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors"><i class="fa-solid fa-layer-group w-4 text-center"></i> Bring to Front</button>
+    <button (click)="moveLayerUp(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors"><i class="fa-solid fa-arrow-up w-4 text-center"></i> Move Up One Layer</button>
+    <button (click)="moveLayerDown(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors"><i class="fa-solid fa-arrow-down w-4 text-center"></i> Move Down One Layer</button>
     <button (click)="sendToBack(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors"><i class="fa-solid fa-layer-group w-4 text-center opacity-50"></i> Send to Back</button>
 
     <div class="my-1 border-t border-[#254261]"></div>
@@ -252,7 +263,7 @@
     </div>
 
     <div class="p-3 border-t border-[#183352] text-center text-xs text-[#64839e]">
-        Made with ❤️ by <a href="https://t.me/ianwoneill" target="_blank" class="text-[#01b4e4] hover:underline">Ian</a>
+        Made with ❤️ by <a href="https://t.me/ianwoneill" target="_blank" class="text-[#01b4e4] hover:underline">Ian</a> and<a href="https://t.me/schrodingerspussy" target="_blank" class="text-[#01b4e4] hover:underline">TheCat</a>
     </div>
   </aside>
 
@@ -297,6 +308,12 @@
 
         <div class="h-6 w-px bg-[#183352] mx-2"></div>
 
+        <button (click)="exportProjectJson()" class="btn btn-ghost btn-icon rounded-full" title="Save project file"><i class="fa-solid fa-floppy-disk"></i></button>
+        <button (click)="toolbarProjectImportInput.click()" class="btn btn-ghost btn-icon rounded-full" title="Open project file"><i class="fa-solid fa-folder-open"></i></button>
+        <input #toolbarProjectImportInput type="file" accept=".json,.tmdb-layout,application/json" class="hidden" (change)="importProjectJson($event)">
+
+        <div class="h-6 w-px bg-[#183352] mx-2"></div>
+
         <button (click)="previewMode.set(!previewMode())" class="btn" [class.btn-secondary]="!previewMode()" [class.btn-primary]="previewMode()">
             <i class="fa-solid" [class.fa-eye-slash]="previewMode()" [class.fa-eye]="!previewMode()"></i> {{ previewMode() ? 'Exit Preview' : 'Preview' }}
         </button>
@@ -338,16 +355,21 @@
               [style.position]="'absolute'" [style.top.px]="element.y" [style.left.px]="element.x"
               [style.width.px]="element.width" [style.height.px]="element.height"
               [style.zIndex]="element.zIndex"
+              [style.--element-rotation]="element.rotation + 'deg'"
               [style.transform]="'rotate(' + element.rotation + 'deg)'"
               [style.backgroundColor]="!element.styles.backgroundGradient ? hexToRgba(element.styles.backgroundColor, element.styles.backgroundOpacity ?? 1) : null"
               [style.backgroundImage]="element.styles.backgroundGradient ? 'linear-gradient(' + element.styles.backgroundGradient.angle + 'deg, ' + element.styles.backgroundGradient.from + ', ' + element.styles.backgroundGradient.to + ')' : null"
               [style.color]="element.styles.color" [style.fontFamily]="element.styles.fontFamily"
               [style.fontSize]="formatElementFontSize(element)" [style.fontWeight]="element.styles.fontWeight"
-              [style.textAlign]="element.styles.textAlign" [style.borderRadius.px]="element.styles.borderRadius"
+              [style.fontStyle]="element.styles.fontStyle || 'normal'"
+              [style.textDecoration]="element.styles.textDecoration || 'none'"
+              [style.lineHeight]="formatElementLineHeight(element)"
+              [style.textAlign]="getContentTextAlign(element)" [style.borderRadius.px]="element.styles.borderRadius"
               [style.borderWidth.px]="element.styles.borderWidth" [style.borderColor]="element.styles.borderColor"
-              [style.opacity]="isElementInGlobalSceneFade(element) ? 0 : element.styles.opacity"
+              [style.borderStyle]="element.styles.borderWidth > 0 ? 'solid' : 'none'"
+              [style.opacity]="element.styles.opacity"
               [style.boxShadow]="element.styles.boxShadow ? `${element.styles.boxShadow.x}px ${element.styles.boxShadow.y}px ${element.styles.boxShadow.blur}px ${element.styles.boxShadow.color}` : null"
-              [style.textShadow]="element.styles.textShadow ? `${element.styles.textShadow.x}px ${element.styles.textShadow.y}px ${element.styles.textShadow.blur}px ${element.styles.textShadow.color}` : null"
+              [style.animation]="previewMode() ? getElementAnimation(element) : null"
               [style.backdropFilter]="(element.styles.filterBlur > 0 || element.styles.filterGrayscale > 0) ? 'blur(' + element.styles.filterBlur + 'px) grayscale(' + element.styles.filterGrayscale + ')' : null"
               [style.webkitBackdropFilter]="(element.styles.filterBlur > 0 || element.styles.filterGrayscale > 0) ? 'blur(' + element.styles.filterBlur + 'px) grayscale(' + element.styles.filterGrayscale + ')' : null"
               style="box-sizing: border-box; touch-action: none; display: flex; align-items: center; justify-content: center;"
@@ -359,11 +381,30 @@
                 }
 
                 @switch (element.type) {
-                  @case ('text') { <div class="p-2 w-full h-full pointer-events-none whitespace-pre-wrap leading-normal">{{ element.content }}</div> }
-                  @case ('image') { <img [src]="element.content" class="w-full h-full pointer-events-none" [style.object-fit]="element.imageFit" [style.borderRadius.px]="element.styles.borderRadius"> }
+                  @case ('text') {
+                    <div class="p-2 w-full h-full pointer-events-none whitespace-pre-wrap flex flex-col"
+                         [style.justifyContent]="getContentVerticalFlex(element)"
+                         [style.textAlign]="getContentTextAlign(element)"
+                         [style.textShadow]="formatContentTextShadow(element)"
+                         [style.webkitTextStroke]="formatContentTextStroke(element)"
+                         [style.textStroke]="formatContentTextStroke(element)">{{ element.content }}</div>
+                  }
+                  @case ('image') {
+                    <img [src]="element.content" class="w-full h-full pointer-events-none content-media"
+                         [style.object-fit]="element.imageFit"
+                         [style.object-position]="getContentObjectPosition(element)"
+                         [style.borderRadius.px]="element.styles.borderRadius"
+                         [style.border]="formatContentMediaBorder(element)"
+                         [style.filter]="formatContentDropShadow(element)">
+                  }
 
                   @case ('tmdb-dynamic-field') {
-                      <div class="p-2 w-full h-full pointer-events-none whitespace-pre-wrap leading-normal flex flex-col justify-center">
+                      <div class="p-2 w-full h-full pointer-events-none whitespace-pre-wrap flex flex-col"
+                           [style.justifyContent]="getContentVerticalFlex(element)"
+                           [style.textAlign]="getContentTextAlign(element)"
+                           [style.textShadow]="formatContentTextShadow(element)"
+                           [style.webkitTextStroke]="formatContentTextStroke(element)"
+                           [style.textStroke]="formatContentTextStroke(element)">
                           @if (element.tmdbData) {
                               {{ element.dataPrefix }}{{ resolveDataPath(element.tmdbData, element.dataPath || '') }}{{ element.dataSuffix }}
                           } @else {
@@ -372,24 +413,26 @@
                       </div>
                   }
 
-                  @case ('tmdb-poster') { @if (element.tmdbData?.poster_path) { <img [src]="'https://image.tmdb.org/t/p/w500' + element.tmdbData.poster_path" class="w-full h-full pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center bg-[#183352] text-[#64839e]"><i class="fa-solid fa-ticket text-4xl"></i></div> } }
-                  @case ('tmdb-backdrop') { @if (element.tmdbData?.backdrop_path) { <img [src]="'https://image.tmdb.org/t/p/w1280' + element.tmdbData.backdrop_path" class="w-full h-full pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center bg-[#183352] text-[#64839e]"><i class="fa-solid fa-image text-4xl"></i></div> } }
-                  @case ('tmdb-logo') { @if (getBestLogo(element)) { <img [src]="getBestLogo(element)" class="w-full h-full p-2 pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center border-2 border-dashed border-[#254261] text-[#64839e]"><span class="font-bold text-xl">LOGO</span></div> } }
-                  @case ('tmdb-title') { <div class="p-2 w-full h-full pointer-events-none leading-tight">{{ element.tmdbData?.title || element.tmdbData?.name || 'Movie Title' }}</div> }
-                  @case ('tmdb-overview') { <div class="p-2 overflow-hidden h-full w-full pointer-events-none">{{ element.tmdbData?.overview || 'Overview text placeholder...' }}</div> }
-                  @case ('tmdb-tagline') { <div class="p-2 italic opacity-80 w-full h-full pointer-events-none">{{ element.tmdbData?.tagline || 'Tagline goes here...' }}</div> }
-                  @case ('tmdb-release-date') { <div class="p-2 w-full h-full pointer-events-none">{{ element.tmdbData?.release_date || element.tmdbData?.first_air_date || '2024-01-01' }}</div> }
-                  @case ('tmdb-runtime') { <div class="p-2 w-full h-full pointer-events-none">{{ (element.tmdbData?.runtime ?? element.tmdbData?.episode_run_time?.[0]) ? (element.tmdbData.runtime ?? element.tmdbData.episode_run_time[0]) + ' min' : '120 min' }}</div> }
-                  @case ('tmdb-season-episode-count') { <div class="p-2 w-full h-full flex items-center justify-center pointer-events-none">{{ element.tmdbData?.number_of_seasons ? element.tmdbData.number_of_seasons + ' Seasons' : 'Seasons / Episodes' }}</div> }
-                  @case ('tmdb-network-logo') { @if (getBestNetworkLogo(element)) { <img [src]="getBestNetworkLogo(element)" class="w-full h-full p-2 pointer-events-none" [style.object-fit]="element.imageFit"> } @else { <div class="w-full h-full flex items-center justify-center bg-white/10"><i class="fa-solid fa-tv text-2xl"></i></div> } }
-                  @case ('tmdb-rating') { <div class="p-2 text-yellow-400 pointer-events-none"> @if(element.tmdbData?.vote_average){ @for(i of [].constructor(Math.round(element.tmdbData.vote_average/2)); track i){<span>★</span>} @for(i of [].constructor(5 - Math.round(element.tmdbData.vote_average/2)); track i){<span class="opacity-30">★</span>} } @else { <span>★★★★☆</span> } </div> }
-                  @case ('tmdb-genres') { <div class="p-2 flex flex-wrap gap-2 items-center justify-center pointer-events-none"> @if(element.tmdbData?.genres) { @for(genre of element.tmdbData.genres; track genre.id) { <span class="genre-pill">{{genre.name}}</span> } } @else { <span class="genre-pill">Action</span><span class="genre-pill">Drama</span> } </div> }
+                  @case ('tmdb-poster') { @if (element.tmdbData?.poster_path) { <img [src]="'https://image.tmdb.org/t/p/w500' + element.tmdbData.poster_path" class="w-full h-full pointer-events-none content-media" [style.object-fit]="element.imageFit" [style.object-position]="getContentObjectPosition(element)" [style.border]="formatContentMediaBorder(element)" [style.filter]="formatContentDropShadow(element)"> } @else { <div class="w-full h-full flex items-center justify-center bg-[#183352] text-[#64839e]"><i class="fa-solid fa-ticket text-4xl"></i></div> } }
+                  @case ('tmdb-backdrop') { @if (element.tmdbData?.backdrop_path) { <img [src]="'https://image.tmdb.org/t/p/w1280' + element.tmdbData.backdrop_path" class="w-full h-full pointer-events-none content-media" [style.object-fit]="element.imageFit" [style.object-position]="getContentObjectPosition(element)" [style.border]="formatContentMediaBorder(element)" [style.filter]="formatContentDropShadow(element)"> } @else { <div class="w-full h-full flex items-center justify-center bg-[#183352] text-[#64839e]"><i class="fa-solid fa-image text-4xl"></i></div> } }
+                  @case ('tmdb-logo') { @if (getBestLogo(element)) { <img [src]="getBestLogo(element)" class="w-full h-full p-2 pointer-events-none content-media" [style.object-fit]="element.imageFit" [style.object-position]="getContentObjectPosition(element)" [style.border]="formatContentMediaBorder(element)" [style.filter]="formatContentDropShadow(element)"> } @else { <div class="p-2 w-full h-full pointer-events-none whitespace-pre-wrap flex flex-col font-bold" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ getLogoFallbackTitle(element) }}</div> } }
+                  @case ('tmdb-title') { <div class="p-2 w-full h-full pointer-events-none flex flex-col" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ element.tmdbData?.title || element.tmdbData?.name || 'Movie Title' }}</div> }
+                  @case ('tmdb-overview') { <div class="p-2 overflow-hidden h-full w-full pointer-events-none flex flex-col" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ element.tmdbData?.overview || 'Overview text placeholder...' }}</div> }
+                  @case ('tmdb-tagline') { <div class="p-2 opacity-80 w-full h-full pointer-events-none flex flex-col" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ element.tmdbData?.tagline || 'Tagline goes here...' }}</div> }
+                  @case ('tmdb-release-date') { <div class="p-2 w-full h-full pointer-events-none flex flex-col" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ element.tmdbData?.release_date || element.tmdbData?.first_air_date || '2024-01-01' }}</div> }
+                  @case ('tmdb-runtime') { <div class="p-2 w-full h-full pointer-events-none flex flex-col" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ (element.tmdbData?.runtime ?? element.tmdbData?.episode_run_time?.[0]) ? (element.tmdbData.runtime ?? element.tmdbData.episode_run_time[0]) + ' min' : '120 min' }}</div> }
+                  @case ('tmdb-season-episode-count') { <div class="p-2 w-full h-full flex flex-col pointer-events-none" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ element.tmdbData?.number_of_seasons ? element.tmdbData.number_of_seasons + ' Seasons' : 'Seasons / Episodes' }}</div> }
+                  @case ('tmdb-network-logo') { @if (getBestNetworkLogo(element)) { <img [src]="getBestNetworkLogo(element)" class="w-full h-full p-2 pointer-events-none content-media" [style.object-fit]="element.imageFit" [style.object-position]="getContentObjectPosition(element)" [style.border]="formatContentMediaBorder(element)" [style.filter]="formatContentDropShadow(element)"> } @else { <div class="p-2 w-full h-full pointer-events-none whitespace-pre-wrap flex flex-col font-bold" [style.justifyContent]="getContentVerticalFlex(element)" [style.textAlign]="getContentTextAlign(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{ getLogoFallbackTitle(element) }}</div> } }
+                  @case ('tmdb-rating') { <div class="p-2 text-yellow-400 pointer-events-none w-full h-full flex" [style.justifyContent]="getContentJustifyContent(element)" [style.alignItems]="getContentAlignItems(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)"> @if(element.tmdbData?.vote_average){ @for(i of [].constructor(Math.round(element.tmdbData.vote_average/2)); track i){<span>★</span>} @for(i of [].constructor(5 - Math.round(element.tmdbData.vote_average/2)); track i){<span class="opacity-30">★</span>} } @else { <span>★★★★☆</span> } </div> }
+                  @case ('tmdb-genres') { <div class="p-2 flex flex-wrap gap-2 pointer-events-none w-full h-full" [style.justifyContent]="getContentJustifyContent(element)" [style.alignItems]="getContentAlignItems(element)"> @if(element.tmdbData?.genres) { @for(genre of element.tmdbData.genres; track genre.id) { <span class="genre-pill" [style.border]="formatContentMediaBorder(element)" [style.boxShadow]="formatContentBoxShadow(element)" [style.textShadow]="formatContentTextShadow(element)" [style.webkitTextStroke]="formatContentTextStroke(element)" [style.textStroke]="formatContentTextStroke(element)">{{genre.name}}</span> } } @else { <span class="genre-pill" [style.border]="formatContentMediaBorder(element)" [style.boxShadow]="formatContentBoxShadow(element)">Action</span><span class="genre-pill" [style.border]="formatContentMediaBorder(element)" [style.boxShadow]="formatContentBoxShadow(element)">Drama</span> } </div> }
                   @case ('tmdb-poster-scroll') {
-                    <div class="w-full h-full flex items-center overflow-x-hidden p-2 gap-3 pointer-events-none">
+                    <div class="w-full h-full flex overflow-x-hidden p-2 gap-3 pointer-events-none"
+                         [style.justifyContent]="getContentJustifyContent(element)"
+                         [style.alignItems]="getContentAlignItems(element)">
                       <div class="poster-scroll-container flex gap-3 h-full">
                         @if (element.tmdbData?.results) {
                             @for(item of getPosterScrollItems(element); track item.id) {
-                                <img [src]="'https://image.tmdb.org/t/p/w500' + item.poster_path" class="h-full w-auto inline-block rounded shadow-lg">
+                                <img [src]="'https://image.tmdb.org/t/p/w500' + item.poster_path" class="h-full w-auto inline-block rounded content-media" [style.border]="formatContentMediaBorder(element)" [style.filter]="formatContentDropShadow(element)">
                             }
                         } @else {
                             <div class="flex gap-2 opacity-50"><div class="h-32 w-20 bg-[#183352] rounded"></div><div class="h-32 w-20 bg-[#183352] rounded"></div><div class="h-32 w-20 bg-[#183352] rounded"></div></div>
@@ -397,12 +440,48 @@
                       </div>
                     </div>
                   }
-                  @case ('tmdb-cast') { <div class="w-full h-full flex items-start overflow-hidden p-2 gap-4 text-center pointer-events-none"> @if (element.tmdbData?.credits?.cast) { @for(actor of element.tmdbData.credits.cast.slice(0, 5); track actor.id) { @if(actor.profile_path) { <div class="flex flex-col items-center w-16 shrink-0"> <img [src]="'https://image.tmdb.org/t/p/w500' + actor.profile_path" class="w-12 h-12 object-cover rounded-full mb-1 shadow-md border border-white/10"> <span class="truncate w-full opacity-80">{{actor.name}}</span> </div> } } } @else { <div class="flex gap-4 opacity-50"><div class="w-12 h-12 rounded-full bg-[#183352]"></div><div class="w-12 h-12 rounded-full bg-[#183352]"></div></div> } </div> }
+                  @case ('tmdb-cast') {
+                    <div class="w-full h-full flex overflow-hidden p-2 gap-4 text-center pointer-events-none"
+                         [style.justifyContent]="getContentJustifyContent(element)"
+                         [style.alignItems]="getContentAlignItems(element)">
+                      @if (getVisibleCast(element).length) {
+                        @for(actor of getVisibleCast(element); track actor.id) {
+                          <div class="flex flex-col items-center shrink-0" [style.width.px]="getCastItemWidth(element)">
+                            <img [src]="'https://image.tmdb.org/t/p/w500' + actor.profile_path"
+                                 class="object-cover rounded-full mb-1"
+                                 [style.width.px]="getCastBubbleSize(element)"
+                                 [style.height.px]="getCastBubbleSize(element)"
+                                 [style.border]="formatContentMediaBorder(element)"
+                                 [style.filter]="formatContentDropShadow(element)">
+                            <span class="truncate w-full opacity-80"
+                                  [style.textShadow]="formatContentTextShadow(element)"
+                                  [style.webkitTextStroke]="formatContentTextStroke(element)"
+                                  [style.textStroke]="formatContentTextStroke(element)">{{actor.name}}</span>
+                          </div>
+                        }
+                      } @else {
+                        <div class="flex gap-4 opacity-50" [style.justifyContent]="getContentJustifyContent(element)" [style.alignItems]="getContentAlignItems(element)">
+                          <div class="rounded-full bg-[#183352]" [style.width.px]="getCastBubbleSize(element)" [style.height.px]="getCastBubbleSize(element)" [style.border]="formatContentMediaBorder(element)" [style.filter]="formatContentDropShadow(element)"></div>
+                          <div class="rounded-full bg-[#183352]" [style.width.px]="getCastBubbleSize(element)" [style.height.px]="getCastBubbleSize(element)" [style.border]="formatContentMediaBorder(element)" [style.filter]="formatContentDropShadow(element)"></div>
+                        </div>
+                      }
+                    </div>
+                  }
                   @case ('tmdb-backdrop-slideshow') {
                       @if (slideshowState()[element.id]?.backdrops.length) {
                           @let state = slideshowState()[element.id];
-                          <div class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 pointer-events-none" [style.backgroundImage]="'url(' + state.backdrops[state.idx1] + ')'" [class.opacity-100]="!state.fade" [class.opacity-0]="state.fade"></div>
-                          <div class="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 pointer-events-none" [style.backgroundImage]="'url(' + state.backdrops[state.idx2] + ')'" [class.opacity-0]="!state.fade" [class.opacity-100]="state.fade"></div>
+                          <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                            <div class="absolute inset-0 bg-cover bg-center pointer-events-none"
+                                 [style.zIndex]="1"
+                                 [style.backgroundImage]="'url(' + state.backdrops[state.idx2] + ')'"></div>
+                            <div class="absolute inset-0 bg-cover bg-center pointer-events-none will-change-transform"
+                                 [style.zIndex]="2"
+                                 [style.backgroundImage]="'url(' + state.backdrops[state.idx1] + ')'"
+                                 [style.transition]="state.resetting ? 'none' : getSlideshowFrameTransition(element)"
+                                 [style.opacity]="getSlideshowCurrentFrameOpacity(element, state.fade)"
+                                 [style.transform]="getSlideshowCurrentFrameTransform(element, state.fade)"
+                                 [style.filter]="getSlideshowCurrentFrameFilter(element, state.fade)"></div>
+                          </div>
                       } @else {
                           <div class="w-full h-full flex items-center justify-center bg-[#183352] text-[#64839e]"><i class="fa-solid fa-play-circle text-4xl"></i></div>
                       }
@@ -443,15 +522,17 @@
                     <div class="text-center text-[#64839e] py-8 text-xs">No layers yet.</div>
                 }
 
-                <div class="text-[10px] text-[#64839e] mb-2 px-2"><i class="fa-solid fa-info-circle mr-1"></i> Drag a layer onto another to group/link them.</div>
+                <div class="text-[10px] text-[#64839e] mb-2 px-2"><i class="fa-solid fa-info-circle mr-1"></i> Drag layers to reorder them. Right-click for layer controls.</div>
 
-                @for (element of elements().slice().reverse(); track element.id) {
+                @for (element of getLayerElements(); track element.id) {
                     <div
                         draggable="true"
                         (dragstart)="onLayerDragStart($event, element.id)"
+                        (dragend)="onLayerDragEnd()"
                         (dragover)="onLayerDragOver($event, element.id)"
                         (dragleave)="onLayerDragLeave($event)"
                         (drop)="onLayerDrop($event, element.id)"
+                        (contextmenu)="openLayerContextMenu($event, element.id)"
                         (click)="selectElement(element.id)"
                         class="layer-item group transition-all duration-200"
                         [class.selected]="isElementSelected(element.id)"
@@ -498,12 +579,12 @@
 
             <div class="grid grid-cols-2 gap-2">
                 <button (click)="exportProjectJson()" class="btn btn-secondary w-full">
-                    <i class="fa-solid fa-file-export"></i> Export JSON
+                    <i class="fa-solid fa-floppy-disk"></i> Save Project
                 </button>
                 <button (click)="projectImportInput.click()" class="btn btn-secondary w-full">
-                    <i class="fa-solid fa-file-import"></i> Import JSON
+                    <i class="fa-solid fa-folder-open"></i> Open Project
                 </button>
-                <input #projectImportInput type="file" accept="application/json" class="hidden" (change)="importProjectJson($event)">
+                <input #projectImportInput type="file" accept=".json,.tmdb-layout,application/json" class="hidden" (change)="importProjectJson($event)">
             </div>
 
             <div class="flex-1 relative bg-[#0a1724] rounded-lg border border-[#183352] overflow-hidden group">
@@ -625,18 +706,6 @@
                               <p class="text-[10px] text-[#64839e] mt-1">Using the synced source layer's item count.</p>
                           }
                       </div>
-
-                      @if(el.type === 'tmdb-backdrop-slideshow') {
-                        <div class="input-group">
-                            <label class="flex items-center justify-between gap-3 text-xs text-[#8eaec4] cursor-pointer">
-                                <span>
-                                    <span class="label mb-1 block">Global Scene Fade</span>
-                                    <span class="text-[10px] text-[#64839e] block">Fade linked TMDB layers together before swapping to the next item.</span>
-                                </span>
-                                <input type="checkbox" [ngModel]="getEffectiveGlobalSceneFade(el)" (ngModelChange)="updateGlobalSceneFade(el.id, $event)" [disabled]="!isCollectionMaster(el)" class="rounded bg-[#0a1724] border-[#254261] text-[#01b4e4] focus:ring-[#01b4e4]">
-                            </label>
-                        </div>
-                      }
 
                       @if(el.tmdbEndpoint?.startsWith('discover')) {
                         <div class="p-3 bg-[#0a1724] rounded border border-[#254261] mt-2">
@@ -799,6 +868,17 @@
                       <input type="text" [ngModel]="el.content" (ngModelChange)="updateElementProperty('content', $event)" class="input text-xs">
                   </div>
               }
+              @if(el.type === 'tmdb-cast') {
+                  <div class="p-4 border-b border-[#183352] space-y-3">
+                      <label class="label">Cast Bubble Size</label>
+                      <select [ngModel]="getCastBubbleSize(el)" (ngModelChange)="updateCastBubbleSize(el.id, +$event)" class="select text-xs">
+                        @for(size of castBubbleSizeOptions; track size) {
+                          <option [value]="size">{{ size }} px</option>
+                        }
+                      </select>
+                      <input type="range" min="20" max="200" step="1" [ngModel]="getCastBubbleSize(el)" (ngModelChange)="updateCastBubbleSize(el.id, +$event)">
+                  </div>
+              }
 
               @if(el.layoutGroupId) {
                 <details class="accordion" open>
@@ -871,6 +951,43 @@
                         </div>
                     </div>
                   }
+
+                  <div class="mb-4 p-3 bg-[#0a1724] rounded border border-[#254261] space-y-3">
+                    <div>
+                      <label class="label">Lock Relative To</label>
+                      <select [ngModel]="el.relativeToElementId || ''" (ngModelChange)="updateRelativeLayout(el.id, 'relativeToElementId', $event)" class="select text-xs">
+                        <option value="">Not locked</option>
+                        @for(option of getRelativeTargetOptions(el); track option.id) {
+                          <option [value]="option.id">{{ formatTypeName(option.type) }} · {{ option.id.replace('el_', 'Layer ') }}</option>
+                        }
+                      </select>
+                    </div>
+
+                    @if(el.relativeToElementId) {
+                      <div class="grid grid-cols-2 gap-2">
+                        <div>
+                          <label class="label">Side</label>
+                          <select [ngModel]="el.relativeSide || 'right'" (ngModelChange)="updateRelativeLayout(el.id, 'relativeSide', $event)" class="select text-xs">
+                            @for(side of relativeSideOptions; track side.value) {
+                              <option [value]="side.value">{{ side.label }}</option>
+                            }
+                          </select>
+                        </div>
+                        <div>
+                          <label class="label">Gap</label>
+                          <input type="number" min="0" [ngModel]="el.relativeGap ?? 12" (ngModelChange)="updateRelativeLayout(el.id, 'relativeGap', +$event)" class="input">
+                        </div>
+                      </div>
+                      <label class="flex items-center justify-between gap-3 text-xs text-[#8eaec4] cursor-pointer">
+                        <span class="label mb-0">Match Cross Size</span>
+                        <input type="checkbox" [ngModel]="!!el.relativeMatchSize" (ngModelChange)="updateRelativeLayout(el.id, 'relativeMatchSize', $event)" class="rounded bg-[#0a1724] border-[#254261] text-[#01b4e4] focus:ring-[#01b4e4]">
+                      </label>
+                      <button (click)="clearRelativeLayout(el.id)" class="btn btn-secondary w-full text-xs py-1">
+                        <i class="fa-solid fa-unlink"></i> Clear Relative Lock
+                      </button>
+                    }
+                  </div>
+
                   <div class="grid grid-cols-2 gap-3 mb-3">
                     <div><label class="label">X Position</label><input type="number" [ngModel]="el.x" (ngModelChange)="updateElementProperty('x', +$event)" class="input"></div>
                     <div><label class="label">Y Position</label><input type="number" [ngModel]="el.y" (ngModelChange)="updateElementProperty('y', +$event)" class="input"></div>
@@ -887,6 +1004,50 @@
                              <input type="number" [ngModel]="el.rotation" (ngModelChange)="updateElementProperty('rotation', +$event)" class="input w-full text-center h-8 pr-1">
                              <span class="absolute right-2 top-1.5 text-[#64839e] text-xs pointer-events-none">°</span>
                         </div>
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <!-- TRANSITIONS -->
+              <details class="accordion">
+                <summary>Transitions</summary>
+                <div class="accordion-content space-y-3">
+                  @if(el.layoutGroupId) {
+                    <label class="flex items-center justify-between gap-3 text-xs text-[#8eaec4] cursor-pointer p-3 bg-[#0a1724] rounded border border-[#254261]">
+                      <span>
+                        <span class="label mb-1 block">Apply To Group</span>
+                        <span class="text-[10px] text-[#64839e] block">All locked group elements animate together.</span>
+                      </span>
+                      <input type="checkbox" [ngModel]="isGroupTransitionEnabled(el)" (ngModelChange)="setGroupTransitionEnabled(el.id, $event)" class="rounded bg-[#0a1724] border-[#254261] text-[#01b4e4] focus:ring-[#01b4e4]">
+                    </label>
+                  }
+
+                  <div>
+                    <label class="label">Effect</label>
+                    <select [ngModel]="getEffectiveTransitionEffect(el)" (ngModelChange)="updateTransitionSetting(el.id, 'transitionEffect', $event)" class="select text-xs">
+                      @for(effect of transitionEffectOptions; track effect.value) {
+                        <option [value]="effect.value">{{ effect.label }}</option>
+                      }
+                    </select>
+                  </div>
+
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="label">Duration</label>
+                      <select [ngModel]="getEffectiveTransitionDurationMs(el)" (ngModelChange)="updateTransitionSetting(el.id, 'transitionDurationMs', +$event)" class="select text-xs">
+                        @for(duration of transitionDurationOptions; track duration) {
+                          <option [value]="duration">{{ duration }} ms</option>
+                        }
+                      </select>
+                    </div>
+                    <div>
+                      <label class="label">Delay</label>
+                      <select [ngModel]="getEffectiveTransitionDelayMs(el)" (ngModelChange)="updateTransitionSetting(el.id, 'transitionDelayMs', +$event)" class="select text-xs">
+                        @for(delay of transitionDelayOptions; track delay) {
+                          <option [value]="delay">{{ delay }} ms</option>
+                        }
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -909,6 +1070,31 @@
                      </div>
                  }
 
+                 @if(el.type !== 'shape') {
+                   <div class="p-3 bg-[#0a1724] rounded border border-[#254261] space-y-3">
+                      <div>
+                        <label class="label">Content Horizontal Align</label>
+                        <div class="flex bg-[#06121e] rounded border border-[#254261] p-1">
+                          @for(option of contentAlignXOptions; track option.value) {
+                            <button (click)="updateElementStyle('contentAlignX', option.value)" class="flex-1 py-1 rounded text-[#64839e] hover:text-white hover:bg-[#183352] transition-colors" [class.text-[#01b4e4]]="getContentTextAlign(el) === option.value" [title]="option.label">
+                              <i class="fa-solid {{option.icon}}"></i>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                      <div>
+                        <label class="label">Content Vertical Align</label>
+                        <div class="flex bg-[#06121e] rounded border border-[#254261] p-1">
+                          @for(option of contentAlignYOptions; track option.value) {
+                            <button (click)="updateElementStyle('contentAlignY', option.value)" class="flex-1 py-1 rounded text-[#64839e] hover:text-white hover:bg-[#183352] transition-colors" [class.text-[#01b4e4]]="getContentVerticalAlign(el) === option.value" [title]="option.label">
+                              <i class="fa-solid {{option.icon}}"></i>
+                            </button>
+                          }
+                        </div>
+                      </div>
+                   </div>
+                 }
+
                  <div>
                     <label class="label">Background Color</label>
                     <div class="flex items-center gap-2 mb-2">
@@ -929,6 +1115,76 @@
                      <div class="flex justify-between mb-1"><label class="label">Border Radius: {{el.styles.borderRadius}}px</label></div>
                      <input type="range" min="0" max="100" [ngModel]="el.styles.borderRadius" (ngModelChange)="updateElementStyle('borderRadius', +$event)">
                  </div>
+
+                 <div>
+                    <label class="label">Box Stroke</label>
+                    <div class="grid grid-cols-[1fr_auto] gap-2 items-center">
+                        <input type="number" min="0" [ngModel]="el.styles.borderWidth" (ngModelChange)="updateElementStyle('borderWidth', +$event)" class="input" placeholder="0">
+                        <span class="text-xs text-[#64839e]">px</span>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="color" [ngModel]="el.styles.borderColor" (ngModelChange)="updateElementStyle('borderColor', $event)" class="w-8 h-8 rounded bg-transparent cursor-pointer border-none p-0">
+                        <input type="text" [ngModel]="el.styles.borderColor" (ngModelChange)="updateElementStyle('borderColor', $event)" class="input text-xs uppercase">
+                    </div>
+                 </div>
+
+                 <div class="p-3 bg-[#0a1724] rounded border border-[#254261] space-y-3">
+                    <label class="flex items-center justify-between gap-3 text-xs text-[#8eaec4] cursor-pointer">
+                        <span class="label mb-0">Box Shadow</span>
+                        <input type="checkbox" [ngModel]="!!el.styles.boxShadow" (ngModelChange)="toggleBoxShadow(el.id, $event)" class="rounded bg-[#0a1724] border-[#254261] text-[#01b4e4] focus:ring-[#01b4e4]">
+                    </label>
+                    @if(el.styles.boxShadow) {
+                      <div class="grid grid-cols-3 gap-2">
+                        <div><label class="label">X</label><input type="number" [ngModel]="el.styles.boxShadow.x" (ngModelChange)="updateBoxShadowProperty(el.id, 'x', +$event)" class="input"></div>
+                        <div><label class="label">Y</label><input type="number" [ngModel]="el.styles.boxShadow.y" (ngModelChange)="updateBoxShadowProperty(el.id, 'y', +$event)" class="input"></div>
+                        <div><label class="label">Blur</label><input type="number" min="0" [ngModel]="el.styles.boxShadow.blur" (ngModelChange)="updateBoxShadowProperty(el.id, 'blur', +$event)" class="input"></div>
+                      </div>
+                      <div>
+                        <label class="label">Shadow Color</label>
+                        <div class="flex items-center gap-2">
+                          <input type="color" [ngModel]="el.styles.boxShadow.color" (ngModelChange)="updateBoxShadowProperty(el.id, 'color', $event)" class="w-8 h-8 rounded bg-transparent cursor-pointer border-none p-0">
+                          <input type="text" [ngModel]="el.styles.boxShadow.color" (ngModelChange)="updateBoxShadowProperty(el.id, 'color', $event)" class="input text-xs uppercase">
+                        </div>
+                      </div>
+                    }
+                 </div>
+
+                 @if(el.type !== 'shape') {
+                   <div class="p-3 bg-[#0a1724] rounded border border-[#254261] space-y-3">
+                      <div>
+                        <label class="label">Content Stroke</label>
+                        <div class="flex gap-2">
+                          <input type="number" min="0" step="0.1" [ngModel]="el.styles.contentStrokeWidth ?? el.styles.textStrokeWidth ?? 0" (ngModelChange)="updateElementStyle('contentStrokeWidth', +$event)" class="input">
+                          <select [ngModel]="el.styles.contentStrokeUnit || el.styles.textStrokeUnit || 'px'" (ngModelChange)="updateElementStyle('contentStrokeUnit', $event)" class="select w-20 px-2">
+                            @for(unit of fontSizeUnits; track unit) { <option [value]="unit">{{unit}}</option> }
+                          </select>
+                        </div>
+                        <div class="flex items-center gap-2 mt-2">
+                          <input type="color" [ngModel]="el.styles.contentStrokeColor || el.styles.textStrokeColor || '#000000'" (ngModelChange)="updateElementStyle('contentStrokeColor', $event)" class="w-8 h-8 rounded bg-transparent cursor-pointer border-none p-0">
+                          <input type="text" [ngModel]="el.styles.contentStrokeColor || el.styles.textStrokeColor || '#000000'" (ngModelChange)="updateElementStyle('contentStrokeColor', $event)" class="input text-xs uppercase">
+                        </div>
+                      </div>
+
+                      <label class="flex items-center justify-between gap-3 text-xs text-[#8eaec4] cursor-pointer">
+                          <span class="label mb-0">Content Shadow</span>
+                          <input type="checkbox" [ngModel]="!!el.styles.contentShadow" (ngModelChange)="toggleContentShadow(el.id, $event)" class="rounded bg-[#0a1724] border-[#254261] text-[#01b4e4] focus:ring-[#01b4e4]">
+                      </label>
+                      @if(el.styles.contentShadow) {
+                        <div class="grid grid-cols-3 gap-2">
+                          <div><label class="label">X</label><input type="number" [ngModel]="el.styles.contentShadow.x" (ngModelChange)="updateContentShadowProperty(el.id, 'x', +$event)" class="input"></div>
+                          <div><label class="label">Y</label><input type="number" [ngModel]="el.styles.contentShadow.y" (ngModelChange)="updateContentShadowProperty(el.id, 'y', +$event)" class="input"></div>
+                          <div><label class="label">Blur</label><input type="number" min="0" [ngModel]="el.styles.contentShadow.blur" (ngModelChange)="updateContentShadowProperty(el.id, 'blur', +$event)" class="input"></div>
+                        </div>
+                        <div>
+                          <label class="label">Shadow Color</label>
+                          <div class="flex items-center gap-2">
+                            <input type="color" [ngModel]="el.styles.contentShadow.color" (ngModelChange)="updateContentShadowProperty(el.id, 'color', $event)" class="w-8 h-8 rounded bg-transparent cursor-pointer border-none p-0">
+                            <input type="text" [ngModel]="el.styles.contentShadow.color" (ngModelChange)="updateContentShadowProperty(el.id, 'color', $event)" class="input text-xs uppercase">
+                          </div>
+                        </div>
+                      }
+                   </div>
+                 }
 
                  <div>
                     <div class="flex justify-between mb-1"><label class="label">Blur Filter: {{el.styles.filterBlur}}px</label></div>
@@ -957,6 +1213,24 @@
                       </div>
                     </div>
                     <div><label class="label">Weight</label><select [ngModel]="el.styles.fontWeight" (ngModelChange)="updateElementStyle('fontWeight', $event)" class="select"><option value="400">Regular</option><option value="500">Medium</option><option value="600">Semibold</option><option value="700">Bold</option></select></div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="label">Line Spacing</label>
+                      <div class="flex gap-2">
+                        <input type="number" min="0.1" step="0.1" [ngModel]="el.styles.lineHeight ?? 1.2" (ngModelChange)="updateElementStyle('lineHeight', +$event)" class="input">
+                        <select [ngModel]="el.styles.lineHeightUnit || 'em'" (ngModelChange)="updateElementStyle('lineHeightUnit', $event)" class="select w-20 px-2">
+                          @for(unit of fontSizeUnits; track unit) { <option [value]="unit">{{unit}}</option> }
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label class="label">Style</label>
+                      <div class="flex bg-[#0a1724] rounded border border-[#254261] p-1">
+                        <button (click)="updateElementStyle('fontStyle', el.styles.fontStyle === 'italic' ? 'normal' : 'italic')" class="flex-1 py-1 rounded text-[#64839e] hover:text-white hover:bg-[#183352] transition-colors" [class.text-[#01b4e4]]="el.styles.fontStyle === 'italic'" title="Italic"><i class="fa-solid fa-italic"></i></button>
+                        <button (click)="updateElementStyle('textDecoration', el.styles.textDecoration === 'underline' ? 'none' : 'underline')" class="flex-1 py-1 rounded text-[#64839e] hover:text-white hover:bg-[#183352] transition-colors" [class.text-[#01b4e4]]="el.styles.textDecoration === 'underline'" title="Underline"><i class="fa-solid fa-underline"></i></button>
+                      </div>
+                    </div>
                   </div>
                   <div>
                       <label class="label">Alignment</label>

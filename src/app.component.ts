@@ -30,7 +30,11 @@ type BackdropFitMode = 'width' | 'height' | 'cover';
 type ElementSizeProperty = 'width' | 'height';
 type FontSizeUnit = 'px' | 'pt' | 'em' | 'rem';
 type LayoutGroupRole = 'background' | 'member';
-type SlideshowState = {idx1: number, idx2: number, fade: boolean, sceneFade: boolean, backdrops: string[], items: any[]};
+type ContentAlignX = 'left' | 'center' | 'right';
+type ContentAlignY = 'top' | 'center' | 'bottom';
+type RelativeSide = 'right' | 'left' | 'top' | 'bottom' | 'center';
+type TransitionEffect = 'none' | 'fade' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'zoom' | 'blur' | 'flip' | 'bounce';
+type SlideshowState = {idx1: number, idx2: number, fade: boolean, resetting?: boolean, sceneFade: boolean, backdrops: string[], items: any[]};
 type TmdbDetailEntry = { key: string; altKey: string; detail: any };
 
 interface CanvasResolutionPreset {
@@ -52,7 +56,20 @@ interface CanvasElement {
     backgroundOpacity: number;
     color: string; fontFamily: string; fontSize: number;
     fontSizeUnit?: FontSizeUnit;
+    fontStyle?: 'normal' | 'italic';
     fontWeight: '400' | '500' | '600' | '700'; textAlign: 'left' | 'center' | 'right';
+    textDecoration?: 'none' | 'underline';
+    lineHeight?: number;
+    lineHeightUnit?: FontSizeUnit;
+    textStrokeWidth?: number;
+    textStrokeUnit?: FontSizeUnit;
+    textStrokeColor?: string;
+    contentAlignX?: ContentAlignX;
+    contentAlignY?: ContentAlignY;
+    contentStrokeWidth?: number;
+    contentStrokeUnit?: FontSizeUnit;
+    contentStrokeColor?: string;
+    contentShadow?: Shadow;
     borderRadius: number; borderWidth: number; borderColor: string;
     opacity: number;
     backgroundGradient?: Gradient;
@@ -78,6 +95,15 @@ interface CanvasElement {
   layoutGroupRole?: LayoutGroupRole;
   groupLocked?: boolean;
   groupPadding?: number;
+  groupTransitionEnabled?: boolean;
+  relativeToElementId?: string;
+  relativeSide?: RelativeSide;
+  relativeGap?: number;
+  relativeMatchSize?: boolean;
+  transitionEffect?: TransitionEffect;
+  transitionDurationMs?: number;
+  transitionDelayMs?: number;
+  castBubbleSize?: number;
 
   // For Dynamic Data Fields
   dataPath?: string;
@@ -103,6 +129,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   private http = inject(HttpClient);
   private cdr = inject(ChangeDetectorRef);
   private slideshowIntervals: Map<string, any> = new Map();
+  private slideshowImagePreloads: Map<string, Promise<void>> = new Map();
   private posterScrollIntervals: Map<string, any> = new Map();
   private searchTerms = new Subject<string>();
   private authCheckSubject = new Subject<void>();
@@ -130,6 +157,38 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   readonly snapIncrementOptions = [5, 10, 20, 25, 50, 100];
   readonly slideshowDurationOptions = [3, 5, 8, 10, 15, 30];
   readonly fontSizeUnits: FontSizeUnit[] = ['px', 'pt', 'em', 'rem'];
+  readonly relativeSideOptions: Array<{ value: RelativeSide; label: string }> = [
+    { value: 'right', label: 'Right of' },
+    { value: 'left', label: 'Left of' },
+    { value: 'top', label: 'Above' },
+    { value: 'bottom', label: 'Below' },
+    { value: 'center', label: 'Centered on' }
+  ];
+  readonly contentAlignXOptions: Array<{ value: ContentAlignX; label: string; icon: string }> = [
+    { value: 'left', label: 'Left', icon: 'fa-align-left' },
+    { value: 'center', label: 'Center', icon: 'fa-align-center' },
+    { value: 'right', label: 'Right', icon: 'fa-align-right' }
+  ];
+  readonly contentAlignYOptions: Array<{ value: ContentAlignY; label: string; icon: string }> = [
+    { value: 'top', label: 'Top', icon: 'fa-arrow-up' },
+    { value: 'center', label: 'Middle', icon: 'fa-arrows-up-down' },
+    { value: 'bottom', label: 'Bottom', icon: 'fa-arrow-down' }
+  ];
+  readonly transitionEffectOptions: Array<{ value: TransitionEffect; label: string }> = [
+    { value: 'none', label: 'None' },
+    { value: 'fade', label: 'Fade' },
+    { value: 'slide-left', label: 'Slide Left' },
+    { value: 'slide-right', label: 'Slide Right' },
+    { value: 'slide-up', label: 'Slide Up' },
+    { value: 'slide-down', label: 'Slide Down' },
+    { value: 'zoom', label: 'Zoom' },
+    { value: 'blur', label: 'Blur Fade' },
+    { value: 'flip', label: 'Flip' },
+    { value: 'bounce', label: 'Bounce' }
+  ];
+  readonly transitionDurationOptions = [150, 250, 350, 500, 750, 1000, 1500];
+  readonly transitionDelayOptions = [0, 100, 250, 500, 1000, 2000];
+  readonly castBubbleSizeOptions = [32, 40, 48, 56, 64, 80, 96, 120];
 
   // --- CONSTANTS & STATIC DATA ---
   readonly countries = COUNTRIES;
@@ -225,6 +284,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   copiedStyles = signal<Partial<CanvasElement['styles']> | null>(null);
 
   slideshowState = signal<{[id: string]: SlideshowState}>({});
+  transitionVersions = signal<{[id: string]: number}>({});
 
   draggedLayerId = signal<string | null>(null);
   dragOverLayerId = signal<string | null>(null);
@@ -332,17 +392,307 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   canCreateSelectionBackground(): boolean {
-    return this.selectedElementIds().length >= 2;
+    return this.multiSelectMode() && this.selectedElementIds().length >= 2;
   }
 
   private normalizeFontSizeUnit(value: any): FontSizeUnit {
     return this.fontSizeUnits.includes(value) ? value : 'px';
   }
 
+  private normalizeLineHeightUnit(value: any): FontSizeUnit {
+    return this.fontSizeUnits.includes(value) ? value : 'em';
+  }
+
+  private normalizeContentAlignX(value: any): ContentAlignX {
+    return this.contentAlignXOptions.some(option => option.value === value) ? value : 'center';
+  }
+
+  private normalizeContentAlignY(value: any): ContentAlignY {
+    return this.contentAlignYOptions.some(option => option.value === value) ? value : 'center';
+  }
+
+  private getDefaultContentAlignXForType(type: ElementType | string, textAlign: any = 'left'): ContentAlignX {
+    const textFlowTypes = new Set([
+      'text',
+      'tmdb-dynamic-field',
+      'tmdb-title',
+      'tmdb-overview',
+      'tmdb-tagline',
+      'tmdb-release-date',
+      'tmdb-runtime'
+    ]);
+    return textFlowTypes.has(type) ? this.normalizeContentAlignX(textAlign) : 'center';
+  }
+
+  private getDefaultContentAlignYForType(type: ElementType | string): ContentAlignY {
+    const topFlowTypes = new Set([
+      'text',
+      'tmdb-title',
+      'tmdb-overview',
+      'tmdb-tagline',
+      'tmdb-release-date',
+      'tmdb-runtime',
+      'tmdb-cast'
+    ]);
+    if (type === 'tmdb-dynamic-field') return 'center';
+    return topFlowTypes.has(type) ? 'top' : 'center';
+  }
+
+  private normalizeRelativeSide(value: any): RelativeSide {
+    return this.relativeSideOptions.some(option => option.value === value) ? value : 'right';
+  }
+
+  private normalizeRelativeGap(value: any): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 12;
+    return Math.max(0, Math.min(1000, Math.round(parsed)));
+  }
+
+  private normalizeTransitionEffect(value: any): TransitionEffect {
+    return this.transitionEffectOptions.some(option => option.value === value) ? value : 'none';
+  }
+
+  private normalizeTransitionDurationMs(value: any, fallback = 500): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(0, Math.min(10000, Math.round(parsed)));
+  }
+
+  private normalizeCssLength(value: any, fallback: number, min = 0, max = 1000): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(min, Math.min(max, parsed));
+  }
+
+  private normalizeCastBubbleSize(value: any): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 48;
+    return Math.max(20, Math.min(200, Math.round(parsed)));
+  }
+
+  private formatShadow(shadow?: Shadow): string | null {
+    if (!shadow) return null;
+    const x = this.normalizeCssLength(shadow.x, 0, -500, 500);
+    const y = this.normalizeCssLength(shadow.y, 0, -500, 500);
+    const blur = this.normalizeCssLength(shadow.blur, 0, 0, 500);
+    return `${x}px ${y}px ${blur}px ${shadow.color || '#000000'}`;
+  }
+
+  private getContentStrokeSource(element: CanvasElement) {
+    const width = element.styles.contentStrokeWidth ?? element.styles.textStrokeWidth ?? 0;
+    const unit = element.styles.contentStrokeUnit ?? element.styles.textStrokeUnit ?? 'px';
+    const color = element.styles.contentStrokeColor ?? element.styles.textStrokeColor ?? '#000000';
+    return { width: this.normalizeCssLength(width, 0, 0, 100), unit: this.normalizeFontSizeUnit(unit), color };
+  }
+
   formatElementFontSize(element: CanvasElement): string {
     const value = Number(element.styles.fontSize);
     const size = Number.isFinite(value) ? Math.max(0.1, value) : 16;
     return `${size}${this.normalizeFontSizeUnit(element.styles.fontSizeUnit)}`;
+  }
+
+  formatElementLineHeight(element: CanvasElement): string {
+    const unit = this.normalizeLineHeightUnit(element.styles.lineHeightUnit);
+    const fallback = unit === 'em' || unit === 'rem' ? 1.2 : Number(element.styles.fontSize) * 1.2;
+    const value = this.normalizeCssLength(element.styles.lineHeight, fallback, 0.1, 1000);
+    return `${value}${unit}`;
+  }
+
+  formatContentTextStroke(element: CanvasElement): string | null {
+    const stroke = this.getContentStrokeSource(element);
+    if (stroke.width <= 0) return null;
+    return `${stroke.width}${stroke.unit} ${stroke.color}`;
+  }
+
+  formatContentMediaBorder(element: CanvasElement): string | null {
+    const stroke = this.getContentStrokeSource(element);
+    if (stroke.width <= 0) return null;
+    return `${stroke.width}${stroke.unit} solid ${stroke.color}`;
+  }
+
+  formatContentTextShadow(element: CanvasElement): string | null {
+    return this.formatShadow(element.styles.contentShadow ?? element.styles.textShadow);
+  }
+
+  formatContentDropShadow(element: CanvasElement): string | null {
+    const shadow = element.styles.contentShadow;
+    if (!shadow) return null;
+    const x = this.normalizeCssLength(shadow.x, 0, -500, 500);
+    const y = this.normalizeCssLength(shadow.y, 0, -500, 500);
+    const blur = this.normalizeCssLength(shadow.blur, 0, 0, 500);
+    return `drop-shadow(${x}px ${y}px ${blur}px ${shadow.color || '#000000'})`;
+  }
+
+  formatContentBoxShadow(element: CanvasElement): string | null {
+    return this.formatShadow(element.styles.contentShadow);
+  }
+
+  getContentTextAlign(element: CanvasElement): ContentAlignX {
+    return this.normalizeContentAlignX(element.styles.contentAlignX ?? this.getDefaultContentAlignXForType(element.type, element.styles.textAlign));
+  }
+
+  getContentVerticalAlign(element: CanvasElement): ContentAlignY {
+    return this.normalizeContentAlignY(element.styles.contentAlignY ?? this.getDefaultContentAlignYForType(element.type));
+  }
+
+  getContentJustifyContent(element: CanvasElement): string {
+    const align = this.normalizeContentAlignX(element.styles.contentAlignX ?? this.getDefaultContentAlignXForType(element.type, element.styles.textAlign));
+    if (align === 'left') return 'flex-start';
+    if (align === 'right') return 'flex-end';
+    return 'center';
+  }
+
+  getContentAlignItems(element: CanvasElement): string {
+    const align = this.getContentVerticalAlign(element);
+    if (align === 'top') return 'flex-start';
+    if (align === 'bottom') return 'flex-end';
+    return 'center';
+  }
+
+  getContentVerticalFlex(element: CanvasElement): string {
+    return this.getContentAlignItems(element);
+  }
+
+  getContentObjectPosition(element: CanvasElement): string {
+    const x = this.normalizeContentAlignX(element.styles.contentAlignX ?? this.getDefaultContentAlignXForType(element.type, element.styles.textAlign));
+    const y = this.normalizeContentAlignY(element.styles.contentAlignY ?? this.getDefaultContentAlignYForType(element.type));
+    const horizontal = x === 'left' ? 'left' : (x === 'right' ? 'right' : 'center');
+    const vertical = y === 'top' ? 'top' : (y === 'bottom' ? 'bottom' : 'center');
+    return `${horizontal} ${vertical}`;
+  }
+
+  getLogoFallbackTitle(element: CanvasElement): string {
+    return element.tmdbData?.title || element.tmdbData?.name || (element.tmdbItemType === 'tv' ? 'TV Show Title' : 'Movie Title');
+  }
+
+  getVisibleCast(element: CanvasElement): any[] {
+    const cast = element.tmdbData?.credits?.cast;
+    return Array.isArray(cast) ? cast.filter((actor: any) => !!actor.profile_path).slice(0, 8) : [];
+  }
+
+  getCastBubbleSize(element: CanvasElement): number {
+    return this.normalizeCastBubbleSize(element.castBubbleSize);
+  }
+
+  getCastItemWidth(element: CanvasElement): number {
+    return Math.max(44, this.getCastBubbleSize(element) + 18);
+  }
+
+  private getTransitionAnimationName(effect: TransitionEffect, alternate = false): string {
+    const animationNames: Record<TransitionEffect, string> = {
+      none: '',
+      fade: 'tmdbFadeIn',
+      'slide-left': 'tmdbSlideInLeft',
+      'slide-right': 'tmdbSlideInRight',
+      'slide-up': 'tmdbSlideInUp',
+      'slide-down': 'tmdbSlideInDown',
+      zoom: 'tmdbZoomIn',
+      blur: 'tmdbBlurIn',
+      flip: 'tmdbFlipIn',
+      bounce: 'tmdbBounceIn'
+    };
+    const name = animationNames[effect];
+    return name && alternate ? `${name}Alt` : name;
+  }
+
+  private getEffectiveTransitionSource(element: CanvasElement, elements = this.elements()): CanvasElement {
+    const background = this.getLayoutGroupBackground(element, elements);
+    if (background?.groupTransitionEnabled && this.normalizeTransitionEffect(background.transitionEffect) !== 'none') {
+      return background;
+    }
+    return element;
+  }
+
+  getEffectiveTransitionEffect(element: CanvasElement, elements = this.elements()): TransitionEffect {
+    return this.normalizeTransitionEffect(this.getEffectiveTransitionSource(element, elements).transitionEffect);
+  }
+
+  getEffectiveTransitionDurationMs(element: CanvasElement, elements = this.elements()): number {
+    return this.normalizeTransitionDurationMs(this.getEffectiveTransitionSource(element, elements).transitionDurationMs, 500);
+  }
+
+  getEffectiveTransitionDelayMs(element: CanvasElement, elements = this.elements()): number {
+    return this.normalizeTransitionDurationMs(this.getEffectiveTransitionSource(element, elements).transitionDelayMs, 0);
+  }
+
+  private getTransitionAnimationCss(element: CanvasElement, elements = this.elements(), alternate = false): string | null {
+    if (element.type === 'tmdb-backdrop-slideshow') return null;
+    const effect = this.getEffectiveTransitionEffect(element, elements);
+    if (effect === 'none') return null;
+    return `${this.getTransitionAnimationName(effect, alternate)} ${this.getEffectiveTransitionDurationMs(element, elements)}ms cubic-bezier(0.22, 1, 0.36, 1) ${this.getEffectiveTransitionDelayMs(element, elements)}ms both`;
+  }
+
+  getElementAnimation(element: CanvasElement): string | null {
+    const version = this.transitionVersions()[element.id] || 0;
+    return this.getTransitionAnimationCss(element, this.elements(), version % 2 === 1);
+  }
+
+  private triggerElementTransitions(elementIds: string[]) {
+    if (!this.previewMode()) return;
+    const allElements = this.elements();
+    const idsToTrigger = new Set(elementIds);
+    elementIds.forEach(id => {
+      const element = allElements.find(el => el.id === id);
+      if (!element?.layoutGroupId) return;
+      allElements
+        .filter(el => el.layoutGroupId === element.layoutGroupId)
+        .forEach(el => idsToTrigger.add(el.id));
+    });
+    const ids = Array.from(idsToTrigger);
+    if (ids.length === 0) return;
+    this.transitionVersions.update(versions => {
+      const next = { ...versions };
+      ids.forEach(id => next[id] = (next[id] || 0) + 1);
+      return next;
+    });
+  }
+
+  isSlideshowTransitionEnabled(element: CanvasElement, elements = this.elements()): boolean {
+    const effect = this.getEffectiveTransitionEffect(element, elements);
+    return effect !== 'none' && this.getEffectiveTransitionDurationMs(element, elements) > 0;
+  }
+
+  isSlideshowCrossfadeEnabled(element: CanvasElement, elements = this.elements()): boolean {
+    return this.getEffectiveTransitionEffect(element, elements) === 'fade';
+  }
+
+  getSlideshowFrameTransition(element: CanvasElement): string {
+    if (!this.isSlideshowTransitionEnabled(element)) return 'none';
+    const duration = this.getEffectiveTransitionDurationMs(element);
+    return [
+      `opacity ${duration}ms ease-in-out`,
+      `transform ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`,
+      `filter ${duration}ms ease-in-out`
+    ].join(', ');
+  }
+
+  getSlideshowCurrentFrameOpacity(element: CanvasElement, transitioning: boolean): number {
+    if (!transitioning || !this.isSlideshowTransitionEnabled(element)) return 1;
+    const effect = this.getEffectiveTransitionEffect(element);
+    return ['slide-left', 'slide-right', 'slide-up', 'slide-down'].includes(effect) ? 1 : 0;
+  }
+
+  getSlideshowCurrentFrameTransform(element: CanvasElement, transitioning: boolean): string {
+    if (!transitioning || !this.isSlideshowTransitionEnabled(element)) return 'none';
+    switch (this.getEffectiveTransitionEffect(element)) {
+      case 'slide-left': return 'translateX(-100%)';
+      case 'slide-right': return 'translateX(100%)';
+      case 'slide-up': return 'translateY(-100%)';
+      case 'slide-down': return 'translateY(100%)';
+      case 'zoom': return 'scale(1.08)';
+      case 'flip': return 'perspective(800px) rotateY(14deg)';
+      case 'bounce': return 'scale(0.92)';
+      default: return 'none';
+    }
+  }
+
+  getSlideshowCurrentFrameFilter(element: CanvasElement, transitioning: boolean): string {
+    return transitioning && this.getEffectiveTransitionEffect(element) === 'blur' ? 'blur(12px)' : 'none';
+  }
+
+  isGroupTransitionEnabled(element: CanvasElement): boolean {
+    const background = this.getLayoutGroupBackground(element);
+    return !!background?.groupTransitionEnabled;
   }
 
   isSyncedWithLayer(element: CanvasElement): boolean {
@@ -399,6 +749,111 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.getLayoutGroupElements(element, elements).filter(el => el.layoutGroupRole === 'member').length;
   }
 
+  isGroupedElement(elementId: string | null): boolean {
+    if (!elementId) return false;
+    return !!this.elements().find(el => el.id === elementId)?.layoutGroupId;
+  }
+
+  isElementLayoutGroupLocked(elementId: string | null): boolean {
+    if (!elementId) return false;
+    const element = this.elements().find(el => el.id === elementId);
+    return element ? this.getLayoutGroupLockState(element) : false;
+  }
+
+  private getHighlightedElementIds(elementId: string): string[] {
+    const element = this.elements().find(el => el.id === elementId);
+    if (!element) return [elementId];
+    if (!this.getLayoutGroupLockState(element)) return [elementId];
+    return this.getLayoutGroupElements(element).map(el => el.id);
+  }
+
+  getRelativeTargetOptions(element: CanvasElement): CanvasElement[] {
+    return this.elements()
+      .filter(option => option.id !== element.id)
+      .filter(option => !this.wouldCreateRelativeCycle(element.id, option.id, this.elements()))
+      .sort((a, b) => a.zIndex - b.zIndex);
+  }
+
+  private wouldCreateRelativeCycle(elementId: string, targetId: string, elements: CanvasElement[]): boolean {
+    const byId = new Map(elements.map(el => [el.id, el]));
+    const visited = new Set<string>();
+    let currentId = targetId;
+
+    while (currentId) {
+      if (currentId === elementId) return true;
+      if (visited.has(currentId)) return true;
+      visited.add(currentId);
+      currentId = byId.get(currentId)?.relativeToElementId || '';
+    }
+
+    return false;
+  }
+
+  private applyRelativeLayoutToElements(elements: CanvasElement[]): CanvasElement[] {
+    if (!elements.some(el => !!el.relativeToElementId)) return elements;
+
+    let next = elements;
+    for (let pass = 0; pass < Math.max(1, elements.length); pass++) {
+      const byId = new Map(next.map(el => [el.id, el]));
+      let changed = false;
+
+      next = next.map(el => {
+        if (!el.relativeToElementId) return el;
+        const target = byId.get(el.relativeToElementId);
+        if (!target || target.id === el.id || this.wouldCreateRelativeCycle(el.id, target.id, next)) return el;
+
+        const side = this.normalizeRelativeSide(el.relativeSide);
+        const gap = this.normalizeRelativeGap(el.relativeGap);
+        let x = el.x;
+        let y = el.y;
+        let width = el.width;
+        let height = el.height;
+
+        if (side === 'center') {
+          if (el.relativeMatchSize) {
+            width = target.width;
+            height = target.height;
+          }
+          x = target.x + ((target.width - width) / 2);
+          y = target.y + ((target.height - height) / 2);
+        } else if (side === 'right') {
+          x = target.x + target.width + gap;
+          y = target.y;
+          if (el.relativeMatchSize) height = target.height;
+        } else if (side === 'left') {
+          x = target.x - el.width - gap;
+          y = target.y;
+          if (el.relativeMatchSize) height = target.height;
+        } else if (side === 'top') {
+          x = target.x;
+          y = target.y - el.height - gap;
+          if (el.relativeMatchSize) width = target.width;
+        } else {
+          x = target.x;
+          y = target.y + target.height + gap;
+          if (el.relativeMatchSize) width = target.width;
+        }
+
+        x = this.maybeSnapValue(el, x);
+        y = this.maybeSnapValue(el, y);
+        width = Math.max(1, width);
+        height = Math.max(1, height);
+
+        if (x === el.x && y === el.y && width === el.width && height === el.height) return el;
+        changed = true;
+        return { ...el, x, y, width, height };
+      });
+
+      if (!changed) break;
+    }
+
+    return next;
+  }
+
+  private syncRelativeLayout() {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els));
+  }
+
   private isCollectionElementType(type: ElementType | string): boolean {
     return type === 'tmdb-backdrop-slideshow' || type === 'tmdb-poster-scroll';
   }
@@ -434,8 +889,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   getEffectiveGlobalSceneFade(element: CanvasElement, elements = this.elements()): boolean {
-    const master = this.getCollectionMasterForElement(element, elements);
-    return !!(master?.globalSceneFade ?? element.globalSceneFade);
+    return false;
   }
 
   private normalizeSlideshowDurationMs(value: any): number {
@@ -602,7 +1056,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       if (event.key === 'z') { event.preventDefault(); this.undo(); }
       if (event.key === 'y') { event.preventDefault(); this.redo(); }
     } else if (event.key === 'Delete' || event.key === 'Backspace') {
-      if (this.selectedElementIds().length > 1 && !isInputActive) {
+      if (this.multiSelectMode() && this.selectedElementIds().length > 1 && !isInputActive) {
              event.preventDefault();
              this.deleteSelectedElements();
       } else if (this.selectedElementId() && !isInputActive) {
@@ -702,7 +1156,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       const scaleX = newW / oldW;
       const scaleY = newH / oldH;
 
-      this.elements.update(els => els.map(el => ({
+      this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => ({
           ...el,
           x: el.x * scaleX,
           y: el.y * scaleY,
@@ -712,7 +1166,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
               ...el.styles,
               fontSize: el.styles.fontSize * ((scaleX + scaleY) / 2)
           }
-      })));
+      }))));
   }
 
   changeCanvasMode(newPreset?: CanvasPreset, newOrientation?: 'portrait' | 'landscape') {
@@ -841,7 +1295,20 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       ...rest,
       styles: {
         ...element.styles,
-        fontSizeUnit: this.normalizeFontSizeUnit(element.styles?.fontSizeUnit)
+        fontSizeUnit: this.normalizeFontSizeUnit(element.styles?.fontSizeUnit),
+        fontStyle: element.styles?.fontStyle === 'italic' ? 'italic' : 'normal',
+        textDecoration: element.styles?.textDecoration === 'underline' ? 'underline' : 'none',
+        lineHeight: this.normalizeCssLength(element.styles?.lineHeight, 1.2, 0.1, 1000),
+        lineHeightUnit: this.normalizeLineHeightUnit(element.styles?.lineHeightUnit),
+        textStrokeWidth: this.normalizeCssLength(element.styles?.textStrokeWidth, 0, 0, 100),
+        textStrokeUnit: this.normalizeFontSizeUnit(element.styles?.textStrokeUnit),
+        textStrokeColor: element.styles?.textStrokeColor || '#000000',
+        contentAlignX: this.normalizeContentAlignX(element.styles?.contentAlignX ?? this.getDefaultContentAlignXForType(element.type, element.styles?.textAlign)),
+        contentAlignY: this.normalizeContentAlignY(element.styles?.contentAlignY ?? this.getDefaultContentAlignYForType(element.type)),
+        contentStrokeWidth: this.normalizeCssLength(element.styles?.contentStrokeWidth ?? element.styles?.textStrokeWidth, 0, 0, 100),
+        contentStrokeUnit: this.normalizeFontSizeUnit(element.styles?.contentStrokeUnit ?? element.styles?.textStrokeUnit),
+        contentStrokeColor: element.styles?.contentStrokeColor || element.styles?.textStrokeColor || '#000000',
+        contentShadow: element.styles?.contentShadow || element.styles?.textShadow
       },
       discoverFilters: {
         sortBy: element.discoverFilters?.sortBy || 'popularity.desc',
@@ -850,7 +1317,16 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       },
       snapToGrid: !!element.snapToGrid,
       snapIncrement: this.normalizeSnapIncrement(element.snapIncrement),
-      maintainAspectRatio: element.type === 'tmdb-poster' ? element.maintainAspectRatio !== false : element.maintainAspectRatio
+      maintainAspectRatio: element.type === 'tmdb-poster' ? element.maintainAspectRatio !== false : element.maintainAspectRatio,
+      relativeToElementId: element.relativeToElementId || undefined,
+      relativeSide: element.relativeToElementId ? this.normalizeRelativeSide(element.relativeSide) : undefined,
+      relativeGap: element.relativeToElementId ? this.normalizeRelativeGap(element.relativeGap) : undefined,
+      relativeMatchSize: element.relativeToElementId ? !!element.relativeMatchSize : undefined,
+      transitionEffect: this.normalizeTransitionEffect(element.transitionEffect),
+      transitionDurationMs: this.normalizeTransitionDurationMs(element.transitionDurationMs, 500),
+      transitionDelayMs: this.normalizeTransitionDurationMs(element.transitionDelayMs, 0),
+      groupTransitionEnabled: !!element.groupTransitionEnabled,
+      castBubbleSize: element.type === 'tmdb-cast' ? this.normalizeCastBubbleSize(element.castBubbleSize) : element.castBubbleSize
     };
     if (this.isCollectionElementType(normalized.type)) {
       normalized.collectionItemLimit = this.normalizeCollectionItemLimit(element.collectionItemLimit);
@@ -881,7 +1357,14 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     if (typeof project.settings?.language === 'string') this.language.set(project.settings.language);
     if (typeof project.settings?.includeAdult === 'boolean') this.includeAdult.set(project.settings.includeAdult);
 
-    this.elements.set(project.elements.map((el: CanvasElement) => this.normalizeElementForProject(el)));
+    const restoredElements = project.elements.map((el: CanvasElement) => this.normalizeElementForProject(el));
+    const restoredIds = new Set(restoredElements.map((el: CanvasElement) => el.id));
+    const cleanedElements = restoredElements.map((el: CanvasElement) => {
+      if (!el.relativeToElementId || restoredIds.has(el.relativeToElementId)) return el;
+      const { relativeToElementId, relativeSide, relativeGap, relativeMatchSize, ...rest } = el;
+      return rest as CanvasElement;
+    });
+    this.elements.set(this.applyRelativeLayoutToElements(cleanedElements));
     this.selectedElementId.set(null);
     this.selectedElementIds.set([]);
     this.multiSelectMode.set(false);
@@ -915,7 +1398,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'tmdb-layout-project.json';
+    a.download = 'tmdb-layout-project.tmdb-layout.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -934,7 +1417,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         if (!this.restoreProject(project)) throw new Error('Invalid project file');
         this.saveProjectToLocalStorage();
       } catch {
-        alert('Unable to import this project JSON file.');
+        alert('Unable to open this project file.');
       } finally {
         input.value = '';
       }
@@ -985,6 +1468,8 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const resolvedCollectionType = collectionType || (itemType === 'tv' ? 'tv' : 'movie');
     const currentScale = this.canvasConfig().width / 1920;
     const baseScale = this.selectedPreset() === 'mobile' ? 1 : (this.selectedPreset() === 'tablet' ? 1.5 : 2.5);
+    const defaultContentAlignX = this.getDefaultContentAlignXForType(type, 'left');
+    const defaultContentAlignY = this.getDefaultContentAlignYForType(type);
 
     const newElement: CanvasElement = {
       id: `el_${Date.now()}`, type, x: 50, y: 50,
@@ -995,7 +1480,30 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       styles: {
           backgroundColor: type === 'tmdb-dynamic-field' ? '#0d253f' : '#1b3a57', // TMDB Dark Blue and Surface
           backgroundOpacity: type === 'tmdb-dynamic-field' ? 0 : 1,
-          color: '#f1f5f9', fontFamily: 'Inter', fontSize: 16 * baseScale, fontSizeUnit: 'px', fontWeight: '400', textAlign: 'left', borderRadius: 8, borderWidth: 0, borderColor: '#f1f5f9', opacity: 1, filterBlur: 0, filterGrayscale: 0
+          color: '#f1f5f9',
+          fontFamily: 'Inter',
+          fontSize: 16 * baseScale,
+          fontSizeUnit: 'px',
+          fontStyle: type === 'tmdb-tagline' ? 'italic' : 'normal',
+          fontWeight: '400',
+          textAlign: 'left',
+          textDecoration: 'none',
+          lineHeight: 1.2,
+          lineHeightUnit: 'em',
+          textStrokeWidth: 0,
+          textStrokeUnit: 'px',
+          textStrokeColor: '#000000',
+          contentAlignX: defaultContentAlignX,
+          contentAlignY: defaultContentAlignY,
+          contentStrokeWidth: 0,
+          contentStrokeUnit: 'px',
+          contentStrokeColor: '#000000',
+          borderRadius: 8,
+          borderWidth: 0,
+          borderColor: '#f1f5f9',
+          opacity: 1,
+          filterBlur: 0,
+          filterGrayscale: 0
       },
       tmdbItemType: itemType,
       tmdbCollectionType: resolvedCollectionType,
@@ -1007,6 +1515,10 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       snapToGrid: false,
       snapIncrement: this.defaultSnapIncrement,
       maintainAspectRatio: type === 'tmdb-poster',
+      transitionEffect: 'none',
+      transitionDurationMs: 500,
+      transitionDelayMs: 0,
+      castBubbleSize: type === 'tmdb-cast' ? 48 : undefined,
       linkGroup: '',
       dataPath: '',
       dataPrefix: '',
@@ -1030,17 +1542,21 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   deleteElement(id: string) {
     const deleted = this.elements().find(el => el.id === id);
     const deletedGroupId = deleted?.layoutGroupRole === 'background' ? deleted.layoutGroupId : undefined;
-    this.elements.update(els => els
+    this.elements.update(els => this.applyRelativeLayoutToElements(els
       .filter(el => el.id !== id)
       .map(el => {
         let next = el.syncedToElementId === id ? { ...el, syncedToElementId: undefined, linkGroup: '' } : el;
+        if (next.relativeToElementId === id) {
+          const { relativeToElementId, relativeSide, relativeGap, relativeMatchSize, ...rest } = next;
+          next = rest as CanvasElement;
+        }
         if (deletedGroupId && next.layoutGroupId === deletedGroupId) {
-          const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, ...rest } = next;
+          const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, groupTransitionEnabled, ...rest } = next;
           next = rest as CanvasElement;
         }
         return next;
       })
-    );
+    ));
     const remainingSelection = this.selectedElementIds().filter(selectedId => selectedId !== id);
     this.selectedElementIds.set(remainingSelection);
     if (this.selectedElementId() === id) this.selectedElementId.set(remainingSelection[remainingSelection.length - 1] || null);
@@ -1063,17 +1579,21 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       if(this.slideshowIntervals.has(id)) { clearInterval(this.slideshowIntervals.get(id)); this.slideshowIntervals.delete(id); }
       if(this.posterScrollIntervals.has(id)) { clearInterval(this.posterScrollIntervals.get(id)); this.posterScrollIntervals.delete(id); }
     });
-    this.elements.update(els => els
+    this.elements.update(els => this.applyRelativeLayoutToElements(els
       .filter(el => !idSet.has(el.id))
       .map(el => {
         let next = el.syncedToElementId && idSet.has(el.syncedToElementId) ? { ...el, syncedToElementId: undefined, linkGroup: '' } : el;
+        if (next.relativeToElementId && idSet.has(next.relativeToElementId)) {
+          const { relativeToElementId, relativeSide, relativeGap, relativeMatchSize, ...rest } = next;
+          next = rest as CanvasElement;
+        }
         if (next.layoutGroupId && deletedBackgroundGroupIds.has(next.layoutGroupId)) {
-          const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, ...rest } = next;
+          const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, groupTransitionEnabled, ...rest } = next;
           next = rest as CanvasElement;
         }
         return next;
       })
-    );
+    ));
     this.selectedElementId.set(null);
     this.selectedElementIds.set([]);
     this.multiSelectMode.set(false);
@@ -1087,7 +1607,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     this.selectedElementId.set(id);
-    this.selectedElementIds.set(id ? [id] : []);
+    this.selectedElementIds.set(id ? this.getHighlightedElementIds(id) : []);
     if(id) {
         this.tmdbSearchResults.set([]);
     }
@@ -1125,7 +1645,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   clearMultiSelection() {
     this.multiSelectMode.set(false);
     const selectedId = this.selectedElementId();
-    this.selectedElementIds.set(selectedId ? [selectedId] : []);
+    this.selectedElementIds.set(selectedId ? this.getHighlightedElementIds(selectedId) : []);
     this.contextMenu.update(cm => ({ ...cm, visible: false }));
   }
 
@@ -1175,8 +1695,20 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         fontFamily: 'Inter',
         fontSize: 16,
         fontSizeUnit: 'px',
+        fontStyle: 'normal',
         fontWeight: '400',
         textAlign: 'left',
+        textDecoration: 'none',
+        lineHeight: 1.2,
+        lineHeightUnit: 'em',
+        textStrokeWidth: 0,
+        textStrokeUnit: 'px',
+        textStrokeColor: '#000000',
+        contentAlignX: 'center',
+        contentAlignY: 'center',
+        contentStrokeWidth: 0,
+        contentStrokeUnit: 'px',
+        contentStrokeColor: '#000000',
         borderRadius: 18,
         borderWidth: 0,
         borderColor: '#f1f5f9',
@@ -1192,6 +1724,10 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       layoutGroupRole: 'background',
       groupLocked: true,
       groupPadding: padding,
+      groupTransitionEnabled: false,
+      transitionEffect: 'none',
+      transitionDurationMs: 500,
+      transitionDelayMs: 0,
       linkGroup: '',
       dataPath: '',
       dataPrefix: '',
@@ -1213,32 +1749,95 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     ]);
 
     this.multiSelectMode.set(false);
-    this.selectedElementId.set(backgroundId);
-    this.selectedElementIds.set([backgroundId]);
+    this.selectElement(backgroundId);
     this.activeRightPanelTab.set('properties');
     this.contextMenu.update(cm => ({ ...cm, visible: false }));
     this.saveStateToHistory();
   }
 
+  private getLayerOrder(elements = this.elements()): CanvasElement[] {
+    return elements
+      .map((el, index) => ({ el, index }))
+      .sort((a, b) => b.el.zIndex - a.el.zIndex || b.index - a.index)
+      .map(item => item.el);
+  }
+
+  getLayerElements(): CanvasElement[] {
+    return this.getLayerOrder();
+  }
+
+  private applyLayerOrder(layerOrder: CanvasElement[], saveHistory = true) {
+    const zById = new Map(layerOrder.map((el, index) => [el.id, layerOrder.length - index]));
+    this.elements.update(els => els.map(el => ({ ...el, zIndex: zById.get(el.id) ?? el.zIndex })));
+    if (saveHistory) this.saveStateToHistory();
+  }
+
+  private moveLayerToIndex(id: string, targetIndex: number, saveHistory = true) {
+    const order = this.getLayerOrder();
+    const currentIndex = order.findIndex(el => el.id === id);
+    if (currentIndex < 0) return;
+    const [moved] = order.splice(currentIndex, 1);
+    const clampedIndex = Math.max(0, Math.min(order.length, targetIndex));
+    order.splice(clampedIndex, 0, moved);
+    this.applyLayerOrder(order, saveHistory);
+  }
+
+  moveLayerUp(id: string, saveHistory = true) {
+    const order = this.getLayerOrder();
+    const currentIndex = order.findIndex(el => el.id === id);
+    if (currentIndex <= 0) {
+      this.contextMenu.update(cm => ({ ...cm, visible: false }));
+      return;
+    }
+    this.moveLayerToIndex(id, currentIndex - 1, saveHistory);
+    this.contextMenu.update(cm => ({ ...cm, visible: false }));
+  }
+
+  moveLayerDown(id: string, saveHistory = true) {
+    const order = this.getLayerOrder();
+    const currentIndex = order.findIndex(el => el.id === id);
+    if (currentIndex < 0 || currentIndex >= order.length - 1) {
+      this.contextMenu.update(cm => ({ ...cm, visible: false }));
+      return;
+    }
+    this.moveLayerToIndex(id, currentIndex + 1, saveHistory);
+    this.contextMenu.update(cm => ({ ...cm, visible: false }));
+  }
+
   bringToFront(id: string, saveHistory = true) {
-    const maxZ = Math.max(...this.elements().map(e => e.zIndex), 0);
-    this.elements.update(els => els.map(el => el.id === id ? { ...el, zIndex: maxZ + 1 } : el));
-    if(saveHistory) this.saveStateToHistory();
+    this.moveLayerToIndex(id, 0, saveHistory);
     this.contextMenu.update(cm => ({ ...cm, visible: false }));
   }
 
   sendToBack(id: string, saveHistory = true) {
-    const minZ = Math.min(...this.elements().map(e => e.zIndex), 0);
-    this.elements.update(els => els.map(el => el.id === id ? { ...el, zIndex: minZ - 1 } : el));
-    if (saveHistory) this.saveStateToHistory();
+    this.moveLayerToIndex(id, this.getLayerOrder().length - 1, saveHistory);
     this.contextMenu.update(cm => ({ ...cm, visible: false }));
   }
 
   updateElementStyle(prop: keyof CanvasElement['styles'], value: any) {
     this.updateSelectedElement(el => {
-      const nextValue = prop === 'fontSizeUnit'
-        ? this.normalizeFontSizeUnit(value)
-        : (prop === 'fontSize' ? Math.max(0.1, Number(value) || 16) : value);
+      let nextValue = value;
+      if (prop === 'fontSizeUnit' || prop === 'textStrokeUnit' || prop === 'contentStrokeUnit') {
+        nextValue = this.normalizeFontSizeUnit(value);
+      } else if (prop === 'lineHeightUnit') {
+        nextValue = this.normalizeLineHeightUnit(value);
+      } else if (prop === 'contentAlignX') {
+        nextValue = this.normalizeContentAlignX(value);
+        el.styles.textAlign = nextValue as CanvasElement['styles']['textAlign'];
+      } else if (prop === 'contentAlignY') {
+        nextValue = this.normalizeContentAlignY(value);
+      } else if (prop === 'textAlign') {
+        nextValue = this.normalizeContentAlignX(value);
+        el.styles.contentAlignX = nextValue;
+      } else if (prop === 'fontSize') {
+        nextValue = Math.max(0.1, Number(value) || 16);
+      } else if (prop === 'lineHeight') {
+        nextValue = this.normalizeCssLength(value, 1.2, 0.1, 1000);
+      } else if (prop === 'textStrokeWidth' || prop === 'contentStrokeWidth') {
+        nextValue = this.normalizeCssLength(value, 0, 0, 100);
+      } else if (prop === 'borderWidth' || prop === 'borderRadius') {
+        nextValue = this.normalizeCssLength(value, 0, 0, 500);
+      }
       el.styles = { ...el.styles, [prop]: nextValue };
     });
   }
@@ -1250,11 +1849,11 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         const currentValue = Number(selected[prop]) || 0;
         const delta = nextValue - currentValue;
         if (delta !== 0 && selected.layoutGroupId) {
-          this.elements.update(els => els.map(el => el.layoutGroupId === selected.layoutGroupId ? {
+          this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => el.layoutGroupId === selected.layoutGroupId ? {
             ...el,
             x: prop === 'x' ? el.x + delta : el.x,
             y: prop === 'y' ? el.y + delta : el.y
-          } : el));
+          } : el)));
           if (!noHistory) this.saveStateToHistory();
         }
         return;
@@ -1320,7 +1919,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const scaleX = prop === 'width' ? nextValue / Math.max(1, background.width) : 1;
     const scaleY = prop === 'height' ? nextValue / Math.max(1, background.height) : 1;
 
-    this.elements.update(els => els.map(el => {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => {
       if (el.layoutGroupId !== background.layoutGroupId) return el;
       if (el.id === background.id) {
         return {
@@ -1337,7 +1936,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         width: Math.max(20, el.width * scaleX),
         height: Math.max(20, el.height * scaleY)
       };
-    }));
+    })));
 
     if (!noHistory) this.saveStateToHistory();
   }
@@ -1404,7 +2003,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!element) return;
     const enabled = value ?? !element.snapToGrid;
 
-    this.elements.update(els => els.map(el => {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => {
       if (el.id !== elementId) return el;
       const snapIncrement = this.normalizeSnapIncrement(el.snapIncrement);
       return {
@@ -1414,20 +2013,20 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         x: enabled ? this.snapValue(el.x, snapIncrement) : el.x,
         y: enabled ? this.snapValue(el.y, snapIncrement) : el.y
       };
-    }));
+    })));
     this.saveStateToHistory();
     this.contextMenu.update(cm => ({ ...cm, visible: false }));
   }
 
   updatePosterAspectRatio(elementId: string, value: boolean) {
-    this.elements.update(els => els.map(el => {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => {
       if (el.id !== elementId || el.type !== 'tmdb-poster') return el;
       return {
         ...el,
         maintainAspectRatio: value,
         height: value ? el.width / this.posterAspectRatio : el.height
       };
-    }));
+    })));
     this.saveStateToHistory();
   }
 
@@ -1439,6 +2038,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       if (el.layoutGroupId !== selected.layoutGroupId || el.layoutGroupRole !== 'background') return el;
       return { ...el, groupLocked: locked };
     }));
+    if (this.selectedElementId()) this.selectedElementIds.set(this.getHighlightedElementIds(this.selectedElementId()!));
     this.saveStateToHistory();
   }
 
@@ -1449,9 +2049,10 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const groupId = selected.layoutGroupId;
     this.elements.update(els => els.map(el => {
       if (el.layoutGroupId !== groupId) return el;
-      const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, ...rest } = el;
+      const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, groupTransitionEnabled, ...rest } = el;
       return rest as CanvasElement;
     }));
+    this.selectedElementIds.set(this.selectedElementId() ? [this.selectedElementId()!] : []);
     this.saveStateToHistory();
   }
 
@@ -1469,7 +2070,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const maxX = Math.max(...members.map(el => el.x + el.width));
     const maxY = Math.max(...members.map(el => el.y + el.height));
 
-    this.elements.update(els => els.map(el => {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => {
       if (el.id !== background.id) return el;
       return {
         ...el,
@@ -1478,6 +2079,173 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         width: (maxX - minX) + (padding * 2),
         height: (maxY - minY) + (padding * 2)
       };
+    })));
+    this.saveStateToHistory();
+  }
+
+  toggleGroupLockFromContext(elementId: string) {
+    const element = this.elements().find(el => el.id === elementId);
+    if (!element?.layoutGroupId) return;
+    this.setLayoutGroupLocked(elementId, !this.getLayoutGroupLockState(element));
+    this.contextMenu.update(cm => ({ ...cm, visible: false }));
+  }
+
+  ungroupLayoutGroupFromContext(elementId: string) {
+    this.ungroupLayoutGroup(elementId);
+    this.contextMenu.update(cm => ({ ...cm, visible: false }));
+  }
+
+  updateRelativeLayout(
+    elementId: string,
+    prop: 'relativeToElementId' | 'relativeSide' | 'relativeGap' | 'relativeMatchSize',
+    value: any
+  ) {
+    this.elements.update(els => {
+      const source = els.find(el => el.id === elementId);
+      if (!source) return els;
+
+      const nextElements = els.map(el => {
+        if (el.id !== elementId) return el;
+
+        if (prop === 'relativeToElementId') {
+          const targetId = value ? String(value) : '';
+          if (!targetId || targetId === elementId || !els.some(option => option.id === targetId) || this.wouldCreateRelativeCycle(elementId, targetId, els)) {
+            const { relativeToElementId, relativeSide, relativeGap, relativeMatchSize, ...rest } = el;
+            return rest as CanvasElement;
+          }
+
+          return {
+            ...el,
+            relativeToElementId: targetId,
+            relativeSide: this.normalizeRelativeSide(el.relativeSide),
+            relativeGap: this.normalizeRelativeGap(el.relativeGap),
+            relativeMatchSize: !!el.relativeMatchSize
+          };
+        }
+
+        if (!el.relativeToElementId) return el;
+        if (prop === 'relativeSide') return { ...el, relativeSide: this.normalizeRelativeSide(value) };
+        if (prop === 'relativeGap') return { ...el, relativeGap: this.normalizeRelativeGap(value) };
+        return { ...el, relativeMatchSize: !!value };
+      });
+
+      return this.applyRelativeLayoutToElements(nextElements);
+    });
+    this.saveStateToHistory();
+  }
+
+  clearRelativeLayout(elementId: string) {
+    this.elements.update(els => els.map(el => {
+      if (el.id !== elementId) return el;
+      const { relativeToElementId, relativeSide, relativeGap, relativeMatchSize, ...rest } = el;
+      return rest as CanvasElement;
+    }));
+    this.saveStateToHistory();
+  }
+
+  toggleBoxShadow(elementId: string, enabled: boolean) {
+    this.elements.update(els => els.map(el => {
+      if (el.id !== elementId) return el;
+      return {
+        ...el,
+        styles: {
+          ...el.styles,
+          boxShadow: enabled ? (el.styles.boxShadow || { x: 0, y: 12, blur: 28, color: '#000000' }) : undefined
+        }
+      };
+    }));
+    this.saveStateToHistory();
+  }
+
+  updateBoxShadowProperty(elementId: string, prop: keyof Shadow, value: any) {
+    this.elements.update(els => els.map(el => {
+      if (el.id !== elementId) return el;
+      const current = el.styles.boxShadow || { x: 0, y: 12, blur: 28, color: '#000000' };
+      const nextValue = prop === 'color' ? String(value || '#000000') : this.normalizeCssLength(value, current[prop] as number, prop === 'blur' ? 0 : -500, 500);
+      return {
+        ...el,
+        styles: {
+          ...el.styles,
+          boxShadow: {
+            ...current,
+            [prop]: nextValue
+          }
+        }
+      };
+    }));
+    this.saveStateToHistory();
+  }
+
+  toggleContentShadow(elementId: string, enabled: boolean) {
+    this.elements.update(els => els.map(el => {
+      if (el.id !== elementId) return el;
+      return {
+        ...el,
+        styles: {
+          ...el.styles,
+          contentShadow: enabled ? (el.styles.contentShadow || el.styles.textShadow || { x: 0, y: 6, blur: 12, color: '#000000' }) : undefined
+        }
+      };
+    }));
+    this.saveStateToHistory();
+  }
+
+  updateContentShadowProperty(elementId: string, prop: keyof Shadow, value: any) {
+    this.elements.update(els => els.map(el => {
+      if (el.id !== elementId) return el;
+      const current = el.styles.contentShadow || { x: 0, y: 6, blur: 12, color: '#000000' };
+      const nextValue = prop === 'color' ? String(value || '#000000') : this.normalizeCssLength(value, current[prop] as number, prop === 'blur' ? 0 : -500, 500);
+      return {
+        ...el,
+        styles: {
+          ...el.styles,
+          contentShadow: {
+            ...current,
+            [prop]: nextValue
+          }
+        }
+      };
+    }));
+    this.saveStateToHistory();
+  }
+
+  updateCastBubbleSize(elementId: string, value: number) {
+    this.elements.update(els => els.map(el => el.id === elementId && el.type === 'tmdb-cast'
+      ? { ...el, castBubbleSize: this.normalizeCastBubbleSize(value) }
+      : el
+    ));
+    this.saveStateToHistory();
+  }
+
+  setGroupTransitionEnabled(elementId: string, enabled: boolean) {
+    const selected = this.elements().find(el => el.id === elementId);
+    if (!selected?.layoutGroupId) return;
+
+    this.elements.update(els => els.map(el => {
+      if (el.layoutGroupId !== selected.layoutGroupId || el.layoutGroupRole !== 'background') return el;
+      return {
+        ...el,
+        groupTransitionEnabled: enabled,
+        transitionEffect: this.normalizeTransitionEffect(el.transitionEffect),
+        transitionDurationMs: this.normalizeTransitionDurationMs(el.transitionDurationMs, 500),
+        transitionDelayMs: this.normalizeTransitionDurationMs(el.transitionDelayMs, 0)
+      };
+    }));
+    this.saveStateToHistory();
+  }
+
+  updateTransitionSetting(elementId: string, prop: 'transitionEffect' | 'transitionDurationMs' | 'transitionDelayMs', value: any) {
+    const selected = this.elements().find(el => el.id === elementId);
+    if (!selected) return;
+
+    const background = this.getLayoutGroupBackground(selected);
+    const targetId = background?.groupTransitionEnabled ? background.id : elementId;
+    this.elements.update(els => els.map(el => {
+      if (el.id !== targetId) return el;
+      const nextValue = prop === 'transitionEffect'
+        ? this.normalizeTransitionEffect(value)
+        : this.normalizeTransitionDurationMs(value, prop === 'transitionDelayMs' ? 0 : 500);
+      return { ...el, [prop]: nextValue };
     }));
     this.saveStateToHistory();
   }
@@ -1543,7 +2311,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       }
     }
 
-    this.elements.update(els => els.map(el => {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => {
       if (el.id !== id) return el;
       return {
         ...el,
@@ -1552,7 +2320,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         width,
         height
       };
-    }));
+    })));
     this.saveStateToHistory();
   }
 
@@ -1583,10 +2351,10 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   private updateSelectedElement(updateFn: (el: CanvasElement) => void, noHistory = false) {
     const id = this.selectedElementId();
     if (!id) return;
-    this.elements.update(els => els.map(el => {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => {
       if (el.id === id) { const newEl = { ...el }; updateFn(newEl); return newEl; }
       return el;
-    }));
+    })));
     if(!noHistory) this.saveStateToHistory();
   }
 
@@ -1653,6 +2421,9 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!sourceEl.linkGroup || !item?.id) return;
     const itemType = this.resolveItemTypeFromSourceItem(item, sourceEl.tmdbCollectionType || sourceEl.tmdbItemType);
     const detail = this.getCollectionItemDetail(sourceEl, item);
+    const transitionTargetIds = this.elements()
+      .filter(el => el.linkGroup === sourceEl.linkGroup && el.id !== sourceElementId && !this.isCollectionElement(el))
+      .map(el => el.id);
     const hasEnrichedDetail = detail && !Array.isArray(detail.results) && (
       !!detail.credits ||
       !!detail.images ||
@@ -1670,6 +2441,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         tmdbData: detail || item
       };
     }));
+    this.triggerElementTransitions(transitionTargetIds);
 
     if (!hasEnrichedDetail) {
       this.elements().forEach(el => {
@@ -1730,13 +2502,18 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     this.saveStateToHistory();
   }
 
-  // --- DRAG & DROP LAYERS (GROUPING) ---
+  // --- DRAG & DROP LAYERS (ORDERING) ---
   onLayerDragStart(event: DragEvent, elementId: string) {
     this.draggedLayerId.set(elementId);
     if (event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'link';
+      event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', elementId);
     }
+  }
+
+  onLayerDragEnd() {
+    this.draggedLayerId.set(null);
+    this.dragOverLayerId.set(null);
   }
 
   onLayerDragOver(event: DragEvent, targetId: string) {
@@ -1744,7 +2521,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const draggedId = this.draggedLayerId();
     if (!draggedId || draggedId === targetId) return;
     this.dragOverLayerId.set(targetId);
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'link';
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
   }
 
   onLayerDragLeave(event: DragEvent) { this.dragOverLayerId.set(null); }
@@ -1753,9 +2530,25 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     event.preventDefault();
     this.dragOverLayerId.set(null);
     const draggedId = this.draggedLayerId();
-    if (!draggedId || draggedId === targetId) return;
-    this.linkElements(draggedId, targetId);
+    if (!draggedId || draggedId === targetId) {
+      this.draggedLayerId.set(null);
+      return;
+    }
+    this.reorderLayerByDrop(draggedId, targetId);
     this.draggedLayerId.set(null);
+  }
+
+  private reorderLayerByDrop(draggedId: string, targetId: string) {
+    const order = this.getLayerOrder();
+    const currentIndex = order.findIndex(el => el.id === draggedId);
+    const targetIndex = order.findIndex(el => el.id === targetId);
+    if (currentIndex < 0 || targetIndex < 0 || currentIndex === targetIndex) return;
+
+    const [moved] = order.splice(currentIndex, 1);
+    const insertIndex = order.findIndex(el => el.id === targetId);
+    if (insertIndex < 0) return;
+    order.splice(insertIndex, 0, moved);
+    this.applyLayerOrder(order);
   }
 
   linkElements(sourceId: string, targetId: string) {
@@ -2006,6 +2799,25 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       this.posterScrollIntervals.set(elementId, interval);
   }
 
+  private preloadSlideshowImage(url: string | undefined): Promise<void> {
+    if (!url) return Promise.resolve();
+    const existing = this.slideshowImagePreloads.get(url);
+    if (existing) return existing;
+
+    const promise = new Promise<void>(resolve => {
+      const img = new Image();
+      img.onload = () => resolve();
+      img.onerror = () => resolve();
+      img.src = url;
+    });
+    this.slideshowImagePreloads.set(url, promise);
+    return promise;
+  }
+
+  private warmSlideshowImages(urls: Array<string | undefined>) {
+    urls.forEach(url => void this.preloadSlideshowImage(url));
+  }
+
   setupSlideshow(elementId: string) {
     if (this.slideshowIntervals.has(elementId)) clearInterval(this.slideshowIntervals.get(elementId));
 
@@ -2016,76 +2828,80 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const backdrops = slideItems.map((item: any) => 'https://image.tmdb.org/t/p/w1280' + item.backdrop_path);
     if (backdrops.length === 0) return;
 
-    this.slideshowState.update(s => ({...s, [elementId]: { idx1: 0, idx2: backdrops.length > 1 ? 1 : 0, fade: false, sceneFade: false, backdrops, items: slideItems }}));
+    this.warmSlideshowImages([backdrops[0], backdrops[1]]);
+    this.slideshowState.update(s => ({...s, [elementId]: { idx1: 0, idx2: backdrops.length > 1 ? 1 : 0, fade: false, resetting: false, sceneFade: false, backdrops, items: slideItems }}));
     this.propagateSourceItemToLinkedGroup(elementId, element, slideItems[0]);
 
     if (backdrops.length < 2) return;
 
     const slideshowDurationMs = this.getEffectiveSlideshowDurationMs(element);
+    let isAdvancing = false;
 
-    const advanceSlide = () => {
-        const el = this.elements().find(e => e.id === elementId);
-        const state = this.slideshowState()[elementId];
-        if (!state) return;
-
-        const nextItem = state.items[state.idx2];
-        if (el && nextItem) this.propagateSourceItemToLinkedGroup(elementId, el, nextItem);
-
+    const completeSlideAdvance = () => {
+        let nextPreloadUrl: string | undefined;
         this.slideshowState.update(s => {
             const current = s[elementId];
             if (!current) return s;
             const nextNextIdx = (current.idx2 + 1) % current.backdrops.length;
-            return {...s, [elementId]: { ...current, idx1: current.idx2, idx2: nextNextIdx, fade: false, sceneFade: false } };
+            nextPreloadUrl = current.backdrops[nextNextIdx];
+            return {...s, [elementId]: { ...current, idx1: current.idx2, idx2: nextNextIdx, fade: false, resetting: true, sceneFade: false } };
         });
+        void this.preloadSlideshowImage(nextPreloadUrl);
         this.cdr.detectChanges();
+
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            this.slideshowState.update(s => {
+              const current = s[elementId];
+              return current ? {...s, [elementId]: { ...current, resetting: false } } : s;
+            });
+            this.cdr.detectChanges();
+          });
+        });
     };
 
-    const interval = setInterval(() => {
+    const advanceSlide = () => {
+        if (isAdvancing) return;
         const el = this.elements().find(e => e.id === elementId);
-        if (el && this.getEffectiveGlobalSceneFade(el)) {
-            this.slideshowState.update(s => {
-                const current = s[elementId];
-                if (!current) return s;
-                return {...s, [elementId]: { ...current, sceneFade: true, fade: false } };
-            });
-            this.cdr.detectChanges();
-            setTimeout(() => advanceSlide(), this.sceneFadeDurationMs);
-            return;
-        }
-
-        this.slideshowState.update(s => {
-            const current = s[elementId];
-            if (!current) return s;
-            return {...s, [elementId]: { ...current, fade: true } };
-        });
-        this.cdr.detectChanges();
-
         const state = this.slideshowState()[elementId];
-        if (el && state.items && state.items.length > state.idx2) {
-            const nextItem = state.items[state.idx2];
-            if (nextItem) this.propagateSourceItemToLinkedGroup(elementId, el, nextItem);
-        }
+        if (!state) return;
+        if (state.fade) return;
 
-        setTimeout(() => {
-            this.slideshowState.update(s => {
-                const current = s[elementId];
-                if (!current) return s;
-                return {...s, [elementId]: { ...current, idx1: current.idx2, fade: false } };
-            });
-            this.cdr.detectChanges();
+        isAdvancing = true;
+        void this.preloadSlideshowImage(state.backdrops[state.idx2]).then(() => {
+          const latestEl = this.elements().find(e => e.id === elementId);
+          const latestState = this.slideshowState()[elementId];
+          if (!latestState || latestState.fade) {
+            isAdvancing = false;
+            return;
+          }
 
-            setTimeout(() => {
-                 this.slideshowState.update(s => {
-                    const current = s[elementId];
-                    if (!current) return s;
-                    const nextNextIdx = (current.idx2 + 1) % current.backdrops.length;
-                    return {...s, [elementId]: { ...current, idx2: nextNextIdx } };
-                 });
-                 this.cdr.detectChanges();
-            }, 900);
-        }, 1100);
+          const nextItem = latestState.items[latestState.idx2];
+          if (latestEl && nextItem) this.propagateSourceItemToLinkedGroup(elementId, latestEl, nextItem);
 
-    }, slideshowDurationMs);
+          const transitionMs = latestEl && this.isSlideshowTransitionEnabled(latestEl)
+            ? this.getEffectiveTransitionDurationMs(latestEl)
+            : 0;
+
+          if (transitionMs <= 0) {
+            completeSlideAdvance();
+            isAdvancing = false;
+            return;
+          }
+
+          this.slideshowState.update(s => {
+            const current = s[elementId];
+            return current ? {...s, [elementId]: { ...current, fade: true, resetting: false, sceneFade: false } } : s;
+          });
+          this.cdr.detectChanges();
+          setTimeout(() => {
+            completeSlideAdvance();
+            isAdvancing = false;
+          }, transitionMs + 50);
+        });
+    };
+
+    const interval = setInterval(() => advanceSlide(), slideshowDurationMs);
     this.slideshowIntervals.set(elementId, interval);
   }
 
@@ -2183,11 +2999,11 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
 
             if (lockedGroup.length > 0) {
               const groupIds = new Set(lockedGroup.map(el => el.id));
-              this.elements.update(els => els.map(el => groupIds.has(el.id) ? {
+              this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => groupIds.has(el.id) ? {
                 ...el,
                 x: el.x + xOffset,
                 y: el.y + yOffset
-              } : el));
+              } : el)));
               lockedGroup.forEach(el => this.resetElementDragTransform(el));
             } else {
               const newX = element.x + xOffset;
@@ -2275,7 +3091,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                   const scaleX = bounds.width / Math.max(1, startBackground.width);
                   const scaleY = bounds.height / Math.max(1, startBackground.height);
                   const startById = new Map(groupStart.map(item => [item.id, item]));
-                  return els.map(el => {
+                  return this.applyRelativeLayoutToElements(els.map(el => {
                     const start = startById.get(el.id);
                     if (!start) return el;
                     if (el.id === source.id) return { ...el, ...bounds };
@@ -2286,14 +3102,14 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                       width: Math.max(20, start.width * scaleX),
                       height: Math.max(20, start.height * scaleY)
                     };
-                  });
+                  }));
                 }
               } catch {
                 // Fall back to resizing only the source element if stored group data is invalid.
               }
             }
 
-            return els.map(el => el.id === id ? { ...el, ...bounds } : el);
+            return this.applyRelativeLayoutToElements(els.map(el => el.id === id ? { ...el, ...bounds } : el));
           });
         },
         end: (event: any) => {
@@ -2326,11 +3142,15 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     } else {
       this.selectElement(elementId);
     }
-    const menuWidth = 200;
-    const menuHeight = 390;
+    const menuWidth = 224;
+    const menuHeight = 560;
     const x = event.clientX + menuWidth > window.innerWidth ? window.innerWidth - menuWidth - 10 : event.clientX;
     const y = event.clientY + menuHeight > window.innerHeight ? window.innerHeight - menuHeight - 10 : event.clientY;
     this.contextMenu.set({ visible: true, x, y, elementId });
+  }
+
+  openLayerContextMenu(event: MouseEvent, elementId: string) {
+    this.openContextMenu(event, elementId);
   }
 
   duplicateElement(id: string) {
@@ -2345,7 +3165,12 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       layoutGroupId: undefined,
       layoutGroupRole: undefined,
       groupLocked: undefined,
-      groupPadding: undefined
+      groupPadding: undefined,
+      groupTransitionEnabled: undefined,
+      relativeToElementId: undefined,
+      relativeSide: undefined,
+      relativeGap: undefined,
+      relativeMatchSize: undefined
     };
     this.elements.update(els => [...els, newEl]);
     this.selectElement(newEl.id);
@@ -2357,7 +3182,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
 
   alignElement(id: string, type: 'fill' | 'fitW' | 'fitH' | 'center' | 'centerH' | 'centerV' | 'top' | 'bottom' | 'left' | 'right') {
     const { width, height } = this.canvasConfig();
-    this.elements.update(els => els.map(el => {
+    this.elements.update(els => this.applyRelativeLayoutToElements(els.map(el => {
       if (el.id !== id) return el;
       switch(type) {
         case 'fill': return { ...el, x: 0, y: 0, width: width, height: height };
@@ -2372,7 +3197,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         case 'right': return { ...el, x: width - el.width };
       }
       return el;
-    }));
+    })));
     this.saveStateToHistory();
     this.contextMenu.update(cm => ({ ...cm, visible: false }));
   }
@@ -2515,6 +3340,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const baseImgUrl = 'https://image.tmdb.org/t/p/w500';
     const baseBackdropUrl = 'https://image.tmdb.org/t/p/w1280';
     const sourcePromises = new Map();
+    const imagePreloads = new Map();
 
     function resolveDataPath(data, path) {
         if (!data || !path) return '';
@@ -2532,6 +3358,19 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         while (el.firstChild) el.removeChild(el.firstChild);
     }
 
+    function preloadImage(src) {
+        if (!src) return Promise.resolve();
+        if (imagePreloads.has(src)) return imagePreloads.get(src);
+        const promise = new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            img.src = src;
+        });
+        imagePreloads.set(src, promise);
+        return promise;
+    }
+
     function setText(el, value) {
         clearElement(el);
         el.textContent = value === undefined || value === null ? '' : String(value);
@@ -2541,6 +3380,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         clearElement(el);
         if (!src) return;
         const img = document.createElement('img');
+        img.className = 'content-media';
         img.src = src;
         img.alt = alt || '';
         img.style.width = '100%';
@@ -2611,17 +3451,12 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         getLinkedTargets(group, sourceElement).forEach(target => renderElement(target, item));
     }
 
-    function withSceneFade(elements, updateFn) {
-        const targets = elements.filter(Boolean);
-        if (targets.length === 0) {
-            updateFn();
-            return;
-        }
-        targets.forEach(target => target.classList.add('scene-fade-active'));
-        setTimeout(() => {
-            updateFn();
-            requestAnimationFrame(() => targets.forEach(target => target.classList.remove('scene-fade-active')));
-        }, 650);
+    function restartElementTransition(el) {
+        const animation = el && el.dataset ? el.dataset.transitionAnimation : '';
+        if (!animation) return;
+        el.style.animation = 'none';
+        void el.offsetWidth;
+        el.style.animation = animation;
     }
 
     function renderGenres(el, item) {
@@ -2652,14 +3487,19 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         el.style.gap = '10px';
         el.style.overflowX = 'auto';
         el.style.textAlign = 'center';
+        const bubbleSize = Math.max(20, Math.min(200, Number(el.dataset.castBubbleSize) || 48));
         const cast = item && item.credits && Array.isArray(item.credits.cast) ? item.credits.cast : [];
-        cast.slice(0, 15).forEach(person => {
+        cast.filter(person => person && person.profile_path).slice(0, 8).forEach(person => {
             if (!person.profile_path) return;
             const member = document.createElement('div');
             member.className = 'cast-member';
+            member.style.width = Math.max(44, bubbleSize + 18) + 'px';
             const img = document.createElement('img');
+            img.className = 'content-media';
             img.src = baseImgUrl + person.profile_path;
             img.alt = person.name || '';
+            img.style.width = bubbleSize + 'px';
+            img.style.height = bubbleSize + 'px';
             const label = document.createElement('p');
             label.textContent = person.name || '';
             member.appendChild(img);
@@ -2693,34 +3533,117 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         const results = Array.isArray(data && data.results) ? data.results.filter(item => item.backdrop_path).slice(0, limit) : [];
         if (results.length === 0) return;
         const fallbackType = data.__collectionType || el.dataset.itemType || 'movie';
-        const globalSceneFade = el.dataset.globalSceneFade === 'true';
         const slideshowDuration = Math.max(1000, Math.min(60000, Number(el.dataset.slideshowDuration) || 5000));
+        const transitionEffect = el.dataset.transitionEffect || 'none';
+        const transitionDuration = Math.max(0, Math.min(10000, Number(el.dataset.transitionDuration) || 0));
+        const useTransition = transitionEffect !== 'none' && transitionDuration > 0;
+        const transitionCss = useTransition
+            ? 'opacity ' + transitionDuration + 'ms ease-in-out, transform ' + transitionDuration + 'ms cubic-bezier(0.22, 1, 0.36, 1), filter ' + transitionDuration + 'ms ease-in-out'
+            : 'none';
         let currentIdx = 0;
+        let transitioning = false;
 
-        function applySlide(index, useSceneFade) {
+        if (el._slideshowTimer) clearInterval(el._slideshowTimer);
+        clearElement(el);
+        el.style.backgroundImage = '';
+
+        const nextFrame = document.createElement('div');
+        const currentFrame = document.createElement('div');
+        [nextFrame, currentFrame].forEach(frame => {
+            frame.style.position = 'absolute';
+            frame.style.inset = '0';
+            frame.style.backgroundSize = 'cover';
+            frame.style.backgroundPosition = 'center';
+            frame.style.pointerEvents = 'none';
+            frame.style.opacity = '1';
+            frame.style.transform = 'none';
+            frame.style.filter = 'none';
+        });
+        nextFrame.style.zIndex = '1';
+        currentFrame.style.zIndex = '2';
+        currentFrame.style.transition = transitionCss;
+        el.appendChild(nextFrame);
+        el.appendChild(currentFrame);
+
+        function getBackdropUrl(item) {
+            return item && item.backdrop_path ? baseBackdropUrl + item.backdrop_path : '';
+        }
+
+        function setFrame(frame, item) {
+            const url = getBackdropUrl(item);
+            void preloadImage(url);
+            frame.style.backgroundImage = url ? 'url(' + url + ')' : '';
+        }
+
+        function updateLinked(index) {
             const item = results[index];
-            const detail = detailForCollectionItem(data, item, fallbackType);
-            const apply = () => {
-                el.style.backgroundImage = 'url(' + baseBackdropUrl + item.backdrop_path + ')';
-                el.style.backgroundSize = 'cover';
-                el.style.backgroundPosition = 'center';
-                el.style.transition = globalSceneFade ? 'opacity 0.6s ease' : 'background-image 1s ease-in-out';
-                updateLinkedGroup(el.dataset.linkGroup, detail, el);
-            };
+            updateLinkedGroup(el.dataset.linkGroup, detailForCollectionItem(data, item, fallbackType), el);
+        }
 
-            if (useSceneFade && globalSceneFade) {
-                withSceneFade([el].concat(getLinkedTargets(el.dataset.linkGroup, el)), apply);
-            } else {
-                apply();
+        function preloadNext() {
+            const nextIdx = (currentIdx + 1) % results.length;
+            setFrame(nextFrame, results[nextIdx]);
+        }
+
+        function getExitStyles() {
+            switch (transitionEffect) {
+                case 'fade': return { opacity: '0', transform: 'none', filter: 'none' };
+                case 'slide-left': return { opacity: '1', transform: 'translateX(-100%)', filter: 'none' };
+                case 'slide-right': return { opacity: '1', transform: 'translateX(100%)', filter: 'none' };
+                case 'slide-up': return { opacity: '1', transform: 'translateY(-100%)', filter: 'none' };
+                case 'slide-down': return { opacity: '1', transform: 'translateY(100%)', filter: 'none' };
+                case 'zoom': return { opacity: '0', transform: 'scale(1.08)', filter: 'none' };
+                case 'blur': return { opacity: '0', transform: 'none', filter: 'blur(12px)' };
+                case 'flip': return { opacity: '0', transform: 'perspective(800px) rotateY(14deg)', filter: 'none' };
+                case 'bounce': return { opacity: '0', transform: 'scale(0.92)', filter: 'none' };
+                default: return { opacity: '1', transform: 'none', filter: 'none' };
             }
         }
 
-        applySlide(0, false);
-        if (results.length > 1 && el.dataset.slideshowStarted !== 'true') {
-            el.dataset.slideshowStarted = 'true';
-            setInterval(() => {
-                currentIdx = (currentIdx + 1) % results.length;
-                applySlide(currentIdx, true);
+        function resetCurrentFrame() {
+            currentFrame.style.transition = 'none';
+            currentFrame.style.opacity = '1';
+            currentFrame.style.transform = 'none';
+            currentFrame.style.filter = 'none';
+            requestAnimationFrame(() => {
+                currentFrame.style.transition = transitionCss;
+            });
+        }
+
+        setFrame(currentFrame, results[0]);
+        preloadNext();
+        updateLinked(0);
+
+        if (results.length > 1) {
+            el._slideshowTimer = setInterval(() => {
+                if (transitioning) return;
+                const nextIdx = (currentIdx + 1) % results.length;
+                transitioning = true;
+
+                preloadImage(getBackdropUrl(results[nextIdx])).then(() => {
+                    updateLinked(nextIdx);
+
+                    if (!useTransition) {
+                        currentIdx = nextIdx;
+                        setFrame(currentFrame, results[currentIdx]);
+                        preloadNext();
+                        transitioning = false;
+                        return;
+                    }
+
+                    const exitStyles = getExitStyles();
+                    currentFrame.style.transition = transitionCss;
+                    currentFrame.style.opacity = exitStyles.opacity;
+                    currentFrame.style.transform = exitStyles.transform;
+                    currentFrame.style.filter = exitStyles.filter;
+                    setTimeout(() => {
+                        currentIdx = nextIdx;
+                        setFrame(currentFrame, results[currentIdx]);
+                        resetCurrentFrame();
+                        preloadNext();
+                        transitioning = false;
+                    }, transitionDuration + 50);
+                });
             }, slideshowDuration);
         }
     }
@@ -2749,10 +3672,14 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                 appendImage(el, item.backdrop_path ? baseBackdropUrl + item.backdrop_path : '', 'Backdrop', imageFit);
                 break;
             case 'tmdb-logo':
-                appendImage(el, getBestLogo(item.images && item.images.logos, document.documentElement.lang || 'en'), 'Logo', imageFit);
+                const logoUrl = getBestLogo(item.images && item.images.logos, document.documentElement.lang || 'en');
+                if (logoUrl) appendImage(el, logoUrl, 'Logo', imageFit);
+                else setText(el, item.title || item.name || 'Title');
                 break;
             case 'tmdb-network-logo':
-                appendImage(el, item.networks && item.networks[0] && item.networks[0].logo_path ? baseImgUrl + item.networks[0].logo_path : '', 'Network', imageFit);
+                const networkUrl = item.networks && item.networks[0] && item.networks[0].logo_path ? baseImgUrl + item.networks[0].logo_path : '';
+                if (networkUrl) appendImage(el, networkUrl, 'Network', imageFit);
+                else setText(el, item.title || item.name || 'Title');
                 break;
             case 'tmdb-title':
                 setText(el, item.title || item.name || '');
@@ -2784,6 +3711,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                 renderCast(el, item);
                 break;
         }
+        restartElementTransition(el);
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -2829,9 +3757,29 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
             const heightPct = (this.clampNumber(el.height, 1, 1, 100000) / height) * 100;
             const fontSize = this.clampNumber(s.fontSize, 16, 0.1, 500);
             const fontSizeUnit = this.safeFontSizeUnit(s.fontSizeUnit);
+            const lineHeightUnit = this.normalizeLineHeightUnit(s.lineHeightUnit);
+            const lineHeightFallback = lineHeightUnit === 'em' || lineHeightUnit === 'rem' ? 1.2 : fontSize * 1.2;
+            const lineHeight = this.clampNumber(s.lineHeight, lineHeightFallback, 0.1, 1000);
             const bgRgba = this.hexToRgba(this.safeCssColor(s.backgroundColor, '#000000'), this.clampNumber(s.backgroundOpacity ?? 1, 1, 0, 1));
             const textAlign = ['left', 'center', 'right'].includes(s.textAlign) ? s.textAlign : 'left';
             const fontWeight = ['400', '500', '600', '700'].includes(s.fontWeight) ? s.fontWeight : '400';
+            const fontStyle = s.fontStyle === 'italic' ? 'italic' : 'normal';
+            const textDecoration = s.textDecoration === 'underline' ? 'underline' : 'none';
+            const contentAlignX = this.normalizeContentAlignX(s.contentAlignX ?? this.getDefaultContentAlignXForType(el.type, textAlign));
+            const contentAlignY = this.normalizeContentAlignY(s.contentAlignY ?? this.getDefaultContentAlignYForType(el.type));
+            const justifyContent = contentAlignX === 'left' ? 'flex-start' : (contentAlignX === 'right' ? 'flex-end' : 'center');
+            const alignItems = contentAlignY === 'top' ? 'flex-start' : (contentAlignY === 'bottom' ? 'flex-end' : 'center');
+            const objectPosition = `${contentAlignX === 'left' ? 'left' : (contentAlignX === 'right' ? 'right' : 'center')} ${contentAlignY === 'top' ? 'top' : (contentAlignY === 'bottom' ? 'bottom' : 'center')}`;
+            const contentStrokeWidth = this.clampNumber(s.contentStrokeWidth ?? s.textStrokeWidth, 0, 0, 100);
+            const contentStrokeUnit = this.safeFontSizeUnit(s.contentStrokeUnit ?? s.textStrokeUnit);
+            const contentStrokeColor = this.safeCssColor(s.contentStrokeColor || s.textStrokeColor, '#000000');
+            const contentShadow = s.contentShadow || s.textShadow;
+            const contentShadowCss = contentShadow
+                ? `${this.clampNumber(contentShadow.x, 0, -500, 500)}px ${this.clampNumber(contentShadow.y, 0, -500, 500)}px ${this.clampNumber(contentShadow.blur, 0, 0, 500)}px ${this.safeCssColor(contentShadow.color, 'rgba(0,0,0,0.35)')}`
+                : '';
+            const contentDropShadowCss = contentShadow
+                ? `drop-shadow(${this.clampNumber(contentShadow.x, 0, -500, 500)}px ${this.clampNumber(contentShadow.y, 0, -500, 500)}px ${this.clampNumber(contentShadow.blur, 0, 0, 500)}px ${this.safeCssColor(contentShadow.color, 'rgba(0,0,0,0.35)')})`
+                : '';
 
             const props = [
                 `position: absolute`,
@@ -2844,8 +3792,14 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                 `color: ${this.safeCssColor(s.color, '#ffffff')}`,
                 `font-family: '${this.safeFontFamily(s.fontFamily)}', sans-serif`,
                 `font-size: ${fontSize}${fontSizeUnit}`,
+                `font-style: ${fontStyle}`,
                 `font-weight: ${fontWeight}`,
-                `text-align: ${textAlign}`,
+                `line-height: ${lineHeight}${lineHeightUnit}`,
+                `text-decoration: ${textDecoration}`,
+                `text-align: ${contentAlignX}`,
+                `display: flex`,
+                `justify-content: ${justifyContent}`,
+                `align-items: ${alignItems}`,
                 `border-radius: ${this.clampNumber(s.borderRadius, 0, 0, 500)}px`,
                 `border: ${this.clampNumber(s.borderWidth, 0, 0, 100)}px solid ${this.safeCssColor(s.borderColor, '#ffffff')}`,
                 `opacity: ${this.clampNumber(s.opacity, 1, 0, 1)}`,
@@ -2855,11 +3809,16 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
 
             const rotation = this.clampNumber(el.rotation, 0, -3600, 3600);
             if (rotation) props.push(`transform: rotate(${rotation}deg)`);
+            if (contentStrokeWidth > 0) {
+                const stroke = `${contentStrokeWidth}${contentStrokeUnit} ${contentStrokeColor}`;
+                props.push(`-webkit-text-stroke: ${stroke}`);
+                props.push(`text-stroke: ${stroke}`);
+            }
             if (s.backgroundGradient) {
                 props.push(`background-image: linear-gradient(${this.clampNumber(s.backgroundGradient.angle, 0, 0, 360)}deg, ${this.safeCssColor(s.backgroundGradient.from, '#000000')}, ${this.safeCssColor(s.backgroundGradient.to, '#000000')})`);
             }
             if (s.boxShadow) props.push(`box-shadow: ${this.clampNumber(s.boxShadow.x, 0, -500, 500)}px ${this.clampNumber(s.boxShadow.y, 0, -500, 500)}px ${this.clampNumber(s.boxShadow.blur, 0, 0, 500)}px ${this.safeCssColor(s.boxShadow.color, 'rgba(0,0,0,0.35)')}`);
-            if (s.textShadow) props.push(`text-shadow: ${this.clampNumber(s.textShadow.x, 0, -500, 500)}px ${this.clampNumber(s.textShadow.y, 0, -500, 500)}px ${this.clampNumber(s.textShadow.blur, 0, 0, 500)}px ${this.safeCssColor(s.textShadow.color, 'rgba(0,0,0,0.35)')}`);
+            if (contentShadowCss) props.push(`text-shadow: ${contentShadowCss}`);
 
             const filters = [];
             const blur = this.clampNumber(s.filterBlur, 0, 0, 100);
@@ -2871,7 +3830,32 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                 props.push(`-webkit-backdrop-filter: ${filters.join(' ')}`);
             }
 
-            return `    /* ${this.escapeHtml(this.formatTypeName(el.type))} */\n    #${this.safeElementId(el.id)} {\n        ${props.join(';\n        ')};\n    }`;
+            const transitionAnimation = this.getTransitionAnimationCss(el, visibleElements);
+            if (transitionAnimation) {
+                props.push(`--element-rotation: ${rotation}deg`);
+                props.push(`animation: ${transitionAnimation}`);
+            }
+
+            const safeId = this.safeElementId(el.id);
+            const mediaProps = [
+                `box-sizing: border-box`,
+                `object-position: ${objectPosition}`
+            ];
+            if (contentStrokeWidth > 0) mediaProps.push(`border: ${contentStrokeWidth}${contentStrokeUnit} solid ${contentStrokeColor}`);
+            if (contentDropShadowCss) mediaProps.push(`filter: ${contentDropShadowCss}`);
+
+            const castBubbleSize = this.normalizeCastBubbleSize(el.castBubbleSize);
+            const extraRules = [
+                `    #${safeId} img.content-media, #${safeId} .scroll-img, #${safeId} .cast-member img {\n        ${mediaProps.join(';\n        ')};\n    }`,
+                `    #${safeId} .genre-pill {\n        ${[
+                    contentStrokeWidth > 0 ? `border: ${contentStrokeWidth}${contentStrokeUnit} solid ${contentStrokeColor}` : '',
+                    contentShadowCss ? `box-shadow: ${contentShadowCss}` : ''
+                ].filter(Boolean).join(';\n        ') || 'border: none'};\n    }`,
+                `    #${safeId} .cast-member {\n        width: ${Math.max(44, castBubbleSize + 18)}px;\n    }`,
+                `    #${safeId} .cast-member img {\n        width: ${castBubbleSize}px;\n        height: ${castBubbleSize}px;\n    }`
+            ];
+
+            return `    /* ${this.escapeHtml(this.formatTypeName(el.type))} */\n    #${safeId} {\n        ${props.join(';\n        ')};\n    }\n${extraRules.join('\n')}`;
         }).join('\n\n');
 
     const htmlElements = visibleElements
@@ -2881,14 +3865,18 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
               `id="${this.escapeHtml(this.safeElementId(el.id))}"`,
               `data-type="${this.escapeHtml(el.type)}"`,
               `data-item-type="${this.escapeHtml(el.tmdbItemType)}"`,
-              `data-image-fit="${this.escapeHtml(el.imageFit || 'cover')}"`
+              `data-image-fit="${this.escapeHtml(el.imageFit || 'cover')}"`,
+              `data-cast-bubble-size="${this.getCastBubbleSize(el)}"`
             ];
+            const transitionAnimation = this.getTransitionAnimationCss(el, visibleElements);
+            if (transitionAnimation) attrs.push(`data-transition-animation="${this.escapeHtml(transitionAnimation)}"`);
             if (sourceId) attrs.push(`data-source-id="${this.escapeHtml(sourceId)}"`);
             if (el.linkGroup) attrs.push(`data-link-group="${this.escapeHtml(el.linkGroup)}"`);
             if (this.isCollectionElement(el)) attrs.push(`data-collection-limit="${this.getEffectiveCollectionItemLimit(el, visibleElements)}"`);
             if (el.type === 'tmdb-backdrop-slideshow') {
-                attrs.push(`data-global-scene-fade="${this.getEffectiveGlobalSceneFade(el, visibleElements) ? 'true' : 'false'}"`);
                 attrs.push(`data-slideshow-duration="${this.getEffectiveSlideshowDurationMs(el, visibleElements)}"`);
+                attrs.push(`data-transition-effect="${this.escapeHtml(this.getEffectiveTransitionEffect(el, visibleElements))}"`);
+                attrs.push(`data-transition-duration="${this.getEffectiveTransitionDurationMs(el, visibleElements)}"`);
             }
             if (el.type === 'tmdb-dynamic-field') {
                 attrs.push(`data-data-path="${this.escapeHtml(el.dataPath || '')}"`);
@@ -2896,10 +3884,10 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
                 attrs.push(`data-data-suffix="${this.escapeHtml(el.dataSuffix || '')}"`);
             }
 
-            const imgStyle = `width:100%;height:100%;object-fit:${this.escapeHtml(el.imageFit || 'cover')};border-radius:${this.clampNumber(el.styles.borderRadius, 0, 0, 500)}px;`;
+            const imgStyle = `width:100%;height:100%;object-fit:${this.escapeHtml(el.imageFit || 'cover')};object-position:${this.escapeHtml(this.getContentObjectPosition(el))};border-radius:${this.clampNumber(el.styles.borderRadius, 0, 0, 500)}px;`;
             let content = '';
             if (el.type === 'text') content = this.escapeHtml(el.content);
-            else if (el.type === 'image') content = `<img src="${this.escapeHtml(el.content)}" style="${imgStyle}" alt="Image">`;
+            else if (el.type === 'image') content = `<img class="content-media" src="${this.escapeHtml(el.content)}" style="${imgStyle}" alt="Image">`;
             else if (el.type === 'tmdb-poster-scroll') content = '<div class="poster-scroll-container" style="display:flex; gap:10px; overflow-x:hidden; height:100%;"></div>';
 
             return `        <!-- ${this.escapeHtml(this.formatTypeName(el.type))} -->\n        <div ${attrs.join(' ')}>\n            ${content}\n        </div>`;
@@ -3157,6 +4145,16 @@ if (isset($_GET['tmdb_source'])) {
         overflow: hidden;
     }
 
+    @keyframes tmdbFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes tmdbSlideInLeft { from { opacity: 0; transform: translateX(48px) rotate(var(--element-rotation, 0deg)); } to { opacity: 1; transform: translateX(0) rotate(var(--element-rotation, 0deg)); } }
+    @keyframes tmdbSlideInRight { from { opacity: 0; transform: translateX(-48px) rotate(var(--element-rotation, 0deg)); } to { opacity: 1; transform: translateX(0) rotate(var(--element-rotation, 0deg)); } }
+    @keyframes tmdbSlideInUp { from { opacity: 0; transform: translateY(48px) rotate(var(--element-rotation, 0deg)); } to { opacity: 1; transform: translateY(0) rotate(var(--element-rotation, 0deg)); } }
+    @keyframes tmdbSlideInDown { from { opacity: 0; transform: translateY(-48px) rotate(var(--element-rotation, 0deg)); } to { opacity: 1; transform: translateY(0) rotate(var(--element-rotation, 0deg)); } }
+    @keyframes tmdbZoomIn { from { opacity: 0; transform: scale(0.86) rotate(var(--element-rotation, 0deg)); } to { opacity: 1; transform: scale(1) rotate(var(--element-rotation, 0deg)); } }
+    @keyframes tmdbBlurIn { from { opacity: 0; filter: blur(10px); } to { opacity: 1; filter: blur(0); } }
+    @keyframes tmdbFlipIn { from { opacity: 0; transform: perspective(800px) rotateX(18deg) rotate(var(--element-rotation, 0deg)); } to { opacity: 1; transform: perspective(800px) rotateX(0) rotate(var(--element-rotation, 0deg)); } }
+    @keyframes tmdbBounceIn { 0% { opacity: 0; transform: scale(0.92) rotate(var(--element-rotation, 0deg)); } 65% { opacity: 1; transform: scale(1.04) rotate(var(--element-rotation, 0deg)); } 100% { opacity: 1; transform: scale(1) rotate(var(--element-rotation, 0deg)); } }
+
     /* --- Element Styles --- */
 ${cssRules}
 
@@ -3199,14 +4197,6 @@ ${cssRules}
         white-space: normal;
         line-height: 1.2;
         color: inherit;
-    }
-
-    [data-type^="tmdb-"] {
-        transition: opacity 0.6s ease;
-    }
-
-    .scene-fade-active {
-        opacity: 0 !important;
     }
 
     /* Hide scrollbars in scroll containers for clean look */
