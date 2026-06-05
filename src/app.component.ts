@@ -482,7 +482,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     return !!elementId && this.selectedElementIds().includes(elementId);
   }
 
-  canCreateSelectionBackground(): boolean {
+  canGroupSelection(): boolean {
     return this.multiSelectMode() && this.selectedElementIds().length >= 2;
   }
 
@@ -807,9 +807,9 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private getEffectiveTransitionSource(element: CanvasElement, elements = this.elements()): CanvasElement {
-    const background = this.getLayoutGroupBackground(element, elements);
-    if (background?.groupTransitionEnabled && this.normalizeTransitionEffect(background.transitionEffect) !== 'none') {
-      return background;
+    const groupSource = this.getLayoutGroupTransitionSource(element, elements);
+    if (groupSource?.groupTransitionEnabled && this.getLayoutGroupLockState(element, elements)) {
+      return groupSource;
     }
     return element;
   }
@@ -935,8 +935,9 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     elementIds.forEach(id => {
       const element = elements.find(el => el.id === id);
       if (!element?.layoutGroupId) return;
-      const background = this.getLayoutGroupBackground(element, elements);
-      if (!background?.groupTransitionEnabled) return;
+      if (!this.getLayoutGroupLockState(element, elements)) return;
+      const groupSource = this.getLayoutGroupTransitionSource(element, elements);
+      if (!groupSource?.groupTransitionEnabled || this.normalizeTransitionEffect(groupSource.transitionEffect) === 'none') return;
       elements
         .filter(el => el.layoutGroupId === element.layoutGroupId)
         .forEach(el => idsToTrigger.add(el.id));
@@ -1184,8 +1185,8 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   isGroupTransitionEnabled(element: CanvasElement): boolean {
-    const background = this.getLayoutGroupBackground(element);
-    return !!background?.groupTransitionEnabled;
+    const groupSource = this.getLayoutGroupTransitionSource(element);
+    return !!groupSource?.groupTransitionEnabled && this.getLayoutGroupLockState(element) && this.normalizeTransitionEffect(groupSource.transitionEffect) !== 'none';
   }
 
   isSyncedWithLayer(element: CanvasElement): boolean {
@@ -1222,12 +1223,29 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.getLayoutGroupElements(element, elements).find(el => el.layoutGroupRole === 'background') || null;
   }
 
+  private getLayoutGroupController(element: CanvasElement, elements = this.elements()): CanvasElement | null {
+    const groupElements = this.getLayoutGroupElements(element, elements);
+    if (groupElements.length === 0) return null;
+    return this.getLayoutGroupBackground(element, elements) || groupElements
+      .slice()
+      .sort((a, b) => a.zIndex - b.zIndex || a.id.localeCompare(b.id))[0];
+  }
+
+  private getLayoutGroupTransitionSource(element: CanvasElement, elements = this.elements()): CanvasElement | null {
+    return this.getLayoutGroupController(element, elements);
+  }
+
+  hasLayoutGroupBackground(element: CanvasElement, elements = this.elements()): boolean {
+    return !!this.getLayoutGroupBackground(element, elements);
+  }
+
   isLayoutGroupBackground(element: CanvasElement): boolean {
     return element.layoutGroupRole === 'background';
   }
 
   getLayoutGroupLockState(element: CanvasElement, elements = this.elements()): boolean {
-    return !!this.getLayoutGroupBackground(element, elements)?.groupLocked;
+    const controller = this.getLayoutGroupController(element, elements);
+    return !!controller?.groupLocked;
   }
 
   isResizeLockedByGroup(element: CanvasElement, elements = this.elements()): boolean {
@@ -2137,8 +2155,8 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       rotation: 0,
       zIndex: this.elements().length + 1, content: 'New Element', visible: true,
       styles: {
-          backgroundColor: type === 'tmdb-dynamic-field' ? '#0d253f' : '#1b3a57', // TMDB Dark Blue and Surface
-          backgroundOpacity: type === 'tmdb-dynamic-field' ? 0 : 1,
+          backgroundColor: type === 'shape' ? '#1b3a57' : '#0d253f',
+          backgroundOpacity: type === 'shape' ? 1 : 0,
           color: '#f1f5f9',
           fontFamily: 'Inter',
           fontSize: 16 * baseScale,
@@ -2203,18 +2221,12 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   deleteElement(id: string) {
-    const deleted = this.elements().find(el => el.id === id);
-    const deletedGroupId = deleted?.layoutGroupRole === 'background' ? deleted.layoutGroupId : undefined;
     this.elements.update(els => this.applyRelativeLayoutToElements(els
       .filter(el => el.id !== id)
       .map(el => {
         let next = el.syncedToElementId === id ? { ...el, syncedToElementId: undefined, linkGroup: '' } : el;
         if (next.relativeToElementId === id) {
           const { relativeToElementId, relativeSide, relativeGap, relativeMatchSize, ...rest } = next;
-          next = rest as CanvasElement;
-        }
-        if (deletedGroupId && next.layoutGroupId === deletedGroupId) {
-          const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, groupTransitionEnabled, ...rest } = next;
           next = rest as CanvasElement;
         }
         return next;
@@ -2233,11 +2245,6 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     const ids = this.selectedElementIds();
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    const deletedBackgroundGroupIds = new Set(
-      this.elements()
-        .filter(el => idSet.has(el.id) && el.layoutGroupRole === 'background' && !!el.layoutGroupId)
-        .map(el => el.layoutGroupId!)
-    );
 	    ids.forEach(id => {
 	      this.clearElementTransitionPreviews(id);
 	      this.clearCollectionRuntime(id);
@@ -2248,10 +2255,6 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
         let next = el.syncedToElementId && idSet.has(el.syncedToElementId) ? { ...el, syncedToElementId: undefined, linkGroup: '' } : el;
         if (next.relativeToElementId && idSet.has(next.relativeToElementId)) {
           const { relativeToElementId, relativeSide, relativeGap, relativeMatchSize, ...rest } = next;
-          next = rest as CanvasElement;
-        }
-        if (next.layoutGroupId && deletedBackgroundGroupIds.has(next.layoutGroupId)) {
-          const { layoutGroupId, layoutGroupRole, groupLocked, groupPadding, groupTransitionEnabled, ...rest } = next;
           next = rest as CanvasElement;
         }
         return next;
@@ -2323,25 +2326,19 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
-  addBackgroundBehindSelection() {
-    const ids = this.selectedElementIds();
-    if (ids.length < 2) return;
+  private createGroupBackgroundElement(groupElements: CanvasElement[], layoutGroupId: string, groupLocked: boolean, source?: CanvasElement): CanvasElement | null {
+    if (groupElements.length === 0) return null;
 
-    const selected = this.elements().filter(el => ids.includes(el.id));
-    if (selected.length < 2) return;
-
-    const padding = 24;
-    const minX = Math.min(...selected.map(el => el.x));
-    const minY = Math.min(...selected.map(el => el.y));
-    const maxX = Math.max(...selected.map(el => el.x + el.width));
-    const maxY = Math.max(...selected.map(el => el.y + el.height));
-    const minZ = Math.min(...selected.map(el => el.zIndex));
+    const padding = source?.groupPadding ?? 24;
+    const minX = Math.min(...groupElements.map(el => el.x));
+    const minY = Math.min(...groupElements.map(el => el.y));
+    const maxX = Math.max(...groupElements.map(el => el.x + el.width));
+    const maxY = Math.max(...groupElements.map(el => el.y + el.height));
+    const minZ = Math.min(...groupElements.map(el => el.zIndex));
     const backgroundZ = Math.max(1, minZ - 1);
-    const backgroundId = `el_${Date.now()}`;
-    const layoutGroupId = `layout_${Date.now().toString(36)}`;
 
-    const background: CanvasElement = {
-      id: backgroundId,
+    return {
+      id: `el_${Date.now()}`,
       type: 'shape',
       x: minX - padding,
       y: minY - padding,
@@ -2387,34 +2384,70 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
       imageFit: 'cover',
       layoutGroupId,
       layoutGroupRole: 'background',
-      groupLocked: true,
+      groupLocked,
       groupPadding: padding,
-      groupTransitionEnabled: false,
-      transitionEffect: 'none',
-      transitionDurationMs: 500,
-      transitionDelayMs: 0,
+      groupTransitionEnabled: !!source?.groupTransitionEnabled,
+      transitionEffect: source?.groupTransitionEnabled ? this.normalizeTransitionEffect(source.transitionEffect) : 'none',
+      transitionDurationMs: this.normalizeTransitionDurationMs(source?.transitionDurationMs, 500),
+      transitionDelayMs: this.normalizeTransitionDurationMs(source?.transitionDelayMs, 0),
       linkGroup: '',
       dataPath: '',
       dataPrefix: '',
       dataSuffix: ''
     };
+  }
 
+  groupSelectedLayers() {
+    const ids = this.selectedElementIds();
+    if (ids.length < 2) return;
+
+    const selected = this.elements().filter(el => ids.includes(el.id));
+    if (selected.length < 2) return;
+
+    const layoutGroupId = `layout_${Date.now().toString(36)}`;
     const selectedIdSet = new Set(ids);
+    this.elements.update(els => els.map(el => {
+        if (!selectedIdSet.has(el.id)) return el;
+        const { layoutGroupId: _oldLayoutGroupId, layoutGroupRole: _oldLayoutGroupRole, groupPadding: _oldGroupPadding, groupTransitionEnabled: _oldGroupTransitionEnabled, ...rest } = el;
+        return {
+          ...rest,
+          layoutGroupId,
+          layoutGroupRole: 'member' as LayoutGroupRole,
+          groupLocked: true
+        };
+    }));
+
+    this.multiSelectMode.set(false);
+    const selectedId = this.selectedElementId() && selectedIdSet.has(this.selectedElementId()!)
+      ? this.selectedElementId()!
+      : ids[ids.length - 1];
+    this.selectedElementId.set(selectedId);
+    this.selectedElementIds.set(this.getHighlightedElementIds(selectedId));
+    this.activeRightPanelTab.set('properties');
+    this.contextMenu.update(cm => ({ ...cm, visible: false }));
+    this.saveStateToHistory();
+  }
+
+  addBackgroundToGroup(elementId: string) {
+    const selected = this.elements().find(el => el.id === elementId);
+    if (!selected?.layoutGroupId || this.getLayoutGroupBackground(selected)) return;
+
+    const groupElements = this.getLayoutGroupElements(selected).filter(el => el.layoutGroupRole !== 'background');
+    const source = this.getLayoutGroupTransitionSource(selected) || selected;
+    const background = this.createGroupBackgroundElement(groupElements, selected.layoutGroupId, this.getLayoutGroupLockState(selected), source);
+    if (!background) return;
+
     this.elements.update(els => [
       ...els.map(el => {
-        if (!selectedIdSet.has(el.id)) return el;
+        if (el.layoutGroupId !== selected.layoutGroupId) return el;
         return {
           ...el,
-          zIndex: el.zIndex <= backgroundZ ? backgroundZ + 1 : el.zIndex,
-          layoutGroupId,
-          layoutGroupRole: 'member' as LayoutGroupRole
+          zIndex: el.zIndex <= background.zIndex ? background.zIndex + 1 : el.zIndex
         };
       }),
       background
     ]);
-
-    this.multiSelectMode.set(false);
-    this.selectElement(backgroundId);
+    this.selectElement(background.id);
     this.activeRightPanelTab.set('properties');
     this.contextMenu.update(cm => ({ ...cm, visible: false }));
     this.saveStateToHistory();
@@ -2707,7 +2740,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     if (!selected?.layoutGroupId) return;
 
     this.elements.update(els => els.map(el => {
-      if (el.layoutGroupId !== selected.layoutGroupId || el.layoutGroupRole !== 'background') return el;
+      if (el.layoutGroupId !== selected.layoutGroupId) return el;
       return { ...el, groupLocked: locked };
     }));
     if (this.selectedElementId()) this.selectedElementIds.set(this.getHighlightedElementIds(this.selectedElementId()!));
@@ -2916,35 +2949,24 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     this.saveStateToHistory();
   }
 
-  setGroupTransitionEnabled(elementId: string, enabled: boolean) {
-    const selected = this.elements().find(el => el.id === elementId);
-    if (!selected?.layoutGroupId) return;
-
-    this.elements.update(els => els.map(el => {
-      if (el.layoutGroupId !== selected.layoutGroupId || el.layoutGroupRole !== 'background') return el;
-      return {
-        ...el,
-        groupTransitionEnabled: enabled,
-        transitionEffect: this.normalizeTransitionEffect(el.transitionEffect),
-        transitionDurationMs: this.normalizeTransitionDurationMs(el.transitionDurationMs, 500),
-        transitionDelayMs: this.normalizeTransitionDurationMs(el.transitionDelayMs, 0)
-      };
-    }));
-    this.saveStateToHistory();
-  }
-
   updateTransitionSetting(elementId: string, prop: 'transitionEffect' | 'transitionDurationMs' | 'transitionDelayMs', value: any) {
     const selected = this.elements().find(el => el.id === elementId);
     if (!selected) return;
 
-    const background = this.getLayoutGroupBackground(selected);
-    const targetId = background?.groupTransitionEnabled ? background.id : elementId;
+    const groupSource = this.getLayoutGroupLockState(selected) ? this.getLayoutGroupTransitionSource(selected) : null;
+    const targetId = groupSource?.id || elementId;
     this.elements.update(els => els.map(el => {
       if (el.id !== targetId) return el;
       const nextValue = prop === 'transitionEffect'
         ? this.normalizeTransitionEffect(value)
         : this.normalizeTransitionDurationMs(value, prop === 'transitionDelayMs' ? 0 : 500);
-      return { ...el, [prop]: nextValue };
+      return {
+        ...el,
+        [prop]: nextValue,
+        groupTransitionEnabled: el.layoutGroupId && this.getLayoutGroupLockState(selected)
+          ? this.normalizeTransitionEffect(prop === 'transitionEffect' ? nextValue : el.transitionEffect) !== 'none'
+          : el.groupTransitionEnabled
+      };
     }));
     this.saveStateToHistory();
 
@@ -2953,7 +2975,7 @@ export class AppComponent implements OnInit, OnDestroy, AfterViewInit {
     if (latestTarget?.type === 'tmdb-backdrop-slideshow' && this.previewSlideshowTransition(latestTarget.id)) return;
     const backdropMaster = latestTarget ? this.getBackdropSlideshowMasterForElement(latestTarget, latestElements) : null;
     if (backdropMaster && this.previewSlideshowTransition(backdropMaster.id)) return;
-    this.triggerElementTransitions([targetId]);
+    this.triggerElementTransitions([elementId]);
   }
 
   private getGlobalDiscoverFiltersForType(type: TmdbCollectionType): DiscoverFilters {

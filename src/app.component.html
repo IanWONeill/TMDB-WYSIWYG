@@ -14,9 +14,9 @@
       <i class="fa-solid fa-object-ungroup w-4 text-center"></i>
       {{ multiSelectMode() ? (isElementInMultiSelection(contextMenu().elementId) ? 'Remove From Selection' : 'Add To Selection') : 'Select Multiple' }}
     </button>
-    @if (canCreateSelectionBackground()) {
-      <button (click)="addBackgroundBehindSelection()" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors">
-        <i class="fa-solid fa-square w-4 text-center"></i> Add Background Behind Selection
+    @if (canGroupSelection()) {
+      <button (click)="groupSelectedLayers()" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors">
+        <i class="fa-solid fa-object-group w-4 text-center"></i> Group Layers
       </button>
     }
     @if (multiSelectMode()) {
@@ -30,7 +30,7 @@
         {{ isElementLayoutGroupLocked(contextMenu().elementId) ? 'Unlock Group' : 'Lock Group' }}
       </button>
       <button (click)="ungroupLayoutGroupFromContext(contextMenu().elementId!)" class="w-full flex items-center gap-3 text-left px-4 py-2 hover:bg-[#01b4e4] hover:text-[#0d253f] transition-colors">
-        <i class="fa-solid fa-object-ungroup w-4 text-center"></i> Ungroup Elements
+        <i class="fa-solid fa-object-ungroup w-4 text-center"></i> Ungroup Layers
       </button>
     }
 
@@ -767,8 +767,8 @@
                   <div class="p-3 bg-[#0a1724] rounded border border-[#254261]">
                       <div class="text-xs text-[#8eaec4] font-semibold">{{ selectedElementIds().length }} elements selected</div>
                   </div>
-                  <button (click)="addBackgroundBehindSelection()" class="btn btn-primary w-full">
-                      <i class="fa-solid fa-square"></i> Add Background Behind Selection
+                  <button (click)="groupSelectedLayers()" class="btn btn-primary w-full">
+                      <i class="fa-solid fa-object-group"></i> Group Layers
                   </button>
                   <button (click)="clearMultiSelection()" class="btn btn-secondary w-full">
                       <i class="fa-solid fa-xmark"></i> Clear Selection
@@ -863,14 +863,20 @@
                       {{ getLayoutGroupLockState(el) ? 'Unlock Group' : 'Lock Group' }}
                     </button>
 
-                    @if(isLayoutGroupBackground(el)) {
+                    @if(!hasLayoutGroupBackground(el)) {
+                      <button (click)="addBackgroundToGroup(el.id)" class="btn btn-secondary w-full">
+                        <i class="fa-solid fa-square"></i> Add Background To Group
+                      </button>
+                    }
+
+                    @if(hasLayoutGroupBackground(el)) {
                       <button (click)="fitGroupBackgroundToMembers(el.id)" class="btn btn-secondary w-full">
                         <i class="fa-solid fa-up-right-and-down-left-from-center"></i> Fit Background To Contents
                       </button>
                     }
 
                     <button (click)="ungroupLayoutGroup(el.id)" class="btn btn-secondary w-full">
-                      <i class="fa-solid fa-object-ungroup"></i> Ungroup Elements
+                      <i class="fa-solid fa-object-ungroup"></i> Ungroup Layers
                     </button>
                   </div>
                 </details>
@@ -978,16 +984,6 @@
               <details class="accordion">
                 <summary>Transitions</summary>
                 <div class="accordion-content space-y-3">
-                  @if(el.layoutGroupId) {
-                    <label class="flex items-center justify-between gap-3 text-xs text-[#8eaec4] cursor-pointer p-3 bg-[#0a1724] rounded border border-[#254261]">
-                      <span>
-                        <span class="label mb-1 block">Apply To Group</span>
-                        <span class="text-[10px] text-[#64839e] block">All locked group elements animate together.</span>
-                      </span>
-                      <input type="checkbox" [ngModel]="isGroupTransitionEnabled(el)" (ngModelChange)="setGroupTransitionEnabled(el.id, $event)" class="rounded bg-[#0a1724] border-[#254261] text-[#01b4e4] focus:ring-[#01b4e4]">
-                    </label>
-                  }
-
                   <div>
                     <label class="label">Effect</label>
                     <select [ngModel]="getEffectiveTransitionEffect(el)" (ngModelChange)="updateTransitionSetting(el.id, 'transitionEffect', $event)" class="select text-xs">
